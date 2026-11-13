@@ -129,10 +129,63 @@ def test_create_document_version(client, lawyer_headers):
     )
     assert res_v2.status_code == 200
     v2_data = res_v2.json()
-    assert v2_data["version_number"] == 1
+    assert v2_data["version_number"] == 2
     assert v2_data["sha256_hash"] != original_hash
 
     # Verificar que el documento principal sigue conservando su hash original inmutable
     doc_detail = client.get(f"/api/v1/documents/{doc_id}", headers=lawyer_headers).json()
     assert doc_detail["sha256_hash"] == original_hash
     assert len(doc_detail["versions"]) == 1
+
+
+def test_version_creation_invalidates_prior_approvals(client, lawyer_headers):
+    """Verifica que la creación de una nueva versión invalide automáticamente aprobaciones previas."""
+    # 1. Cargar documento original
+    v1_content = b"DOCUMENTO DE PRUEBA DE INVALIDACION DE APROBACION"
+    files_v1 = {"file": ("contrato_aprobacion.txt", io.BytesIO(v1_content), "text/plain")}
+    res_v1 = client.post(
+        "/api/v1/documents/upload",
+        files=files_v1,
+        data={"title": "Contrato Sujeto a Aprobacion", "doc_type": "CONTRATO"},
+        headers=lawyer_headers
+    )
+    assert res_v1.status_code == 200
+    doc_id = res_v1.json()["id"]
+
+    # 2. Inicializar workflow
+    wf_res = client.get(f"/api/v1/workflow/document/{doc_id}", headers=lawyer_headers)
+    assert wf_res.status_code == 200
+    wf_id = wf_res.json()["id"]
+
+    # 3. Emitir aprobación definitiva con Cédula
+    app_res = client.post(
+        f"/api/v1/workflow/{wf_id}/approve",
+        json={"reviewer_license": "12345678", "notes": "Aprobación inicial válida", "scope": "DEFINITIVE_APPROVAL"},
+        headers=lawyer_headers
+    )
+    assert app_res.status_code == 201
+    assert app_res.json()["status"] == "VALID"
+
+    # Verificar que el workflow está en estado APPROVED
+    wf_detail = client.get(f"/api/v1/workflow/{wf_id}", headers=lawyer_headers).json()
+    assert wf_detail["current_state"] == "APPROVED"
+
+    # 4. Crear versión 2 del documento
+    v2_content = b"DOCUMENTO MODIFICADO VERSION 2 QUE DEBE INVALIDAR"
+    files_v2 = {"file": ("contrato_v2.txt", io.BytesIO(v2_content), "text/plain")}
+    res_v2 = client.post(
+        f"/api/v1/documents/{doc_id}/versions",
+        files=files_v2,
+        data={"change_summary": "Modificación sustancial posterior a visto bueno"},
+        headers=lawyer_headers
+    )
+    assert res_v2.status_code == 200
+
+    # 5. Comprobar que la aprobación previa fue invalidada y el workflow regresó a IN_CORRECTION
+    wf_after = client.get(f"/api/v1/workflow/{wf_id}", headers=lawyer_headers).json()
+    assert wf_after["current_state"] == "IN_CORRECTION"
+    approvals = wf_after["approvals"]
+    assert len(approvals) >= 1
+    prior_app = approvals[0]
+    assert prior_app["status"] == "INVALIDATED_BY_CONTENT_CHANGE"
+    assert "Modificación sustancial" in str(prior_app["invalidation_reason"])

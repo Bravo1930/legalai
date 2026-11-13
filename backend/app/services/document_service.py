@@ -198,8 +198,11 @@ class DocumentService:
             tenant_id=str(tenant_id)
         )
 
-        # Determinar número de versión siguiente
-        current_max_ver = len(doc.versions) + 1
+        # Determinar número de versión siguiente (v1 es el original inmutable, primera derivada es v2)
+        latest_version = db.query(DocumentVersion).filter(
+            DocumentVersion.document_id == doc.id
+        ).order_by(desc(DocumentVersion.version_number)).first()
+        current_max_ver = (latest_version.version_number + 1) if latest_version else 2
 
         version = DocumentVersion(
             document_id=doc.id,
@@ -225,5 +228,18 @@ class DocumentService:
         )
         db.add(audit)
         db.commit()
+
+        # Invalidación automática de aprobaciones previas al modificarse el contenido del documento
+        try:
+            from app.services.workflow.approval_service import ApprovalService
+            approval_svc = ApprovalService(db)
+            approval_svc.invalidate_approvals_on_change(
+                document_id=doc.id,
+                new_version_number=current_max_ver,
+                reason=f"Nueva versión {current_max_ver} generada: {change_summary}"
+            )
+            db.commit()
+        except Exception as e:
+            logger.warning(f"No se pudo invalidar aprobaciones previas para Doc:{doc.id}: {e}")
 
         return version
