@@ -53,3 +53,91 @@ export interface AsyncTask {
   updated_at: string;
   completed_at?: string;
 }
+
+export interface Client {
+  id: string;
+  tenant_id: string;
+  name: string;
+  rfc?: string;
+  curp?: string;
+  client_type: string;
+  contact_email?: string;
+  contact_phone?: string;
+  address?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Case {
+  id: string;
+  tenant_id: string;
+  client_id: string;
+  lead_lawyer_id?: string;
+  case_number: string;
+  title: string;
+  description?: string;
+  matter: string;
+  jurisdiction: string;
+  state?: string;
+  court_authority?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentMetadata {
+  parties?: Array<{ role: string; name: string }>;
+  doc_date?: string;
+  subject_matter?: string;
+  obligations?: string[];
+  amounts?: string[];
+  terms_deadlines?: string[];
+  signers?: Array<{ professional_license?: string; name?: string }>;
+  jurisdiction?: string;
+  court_authority?: string;
+  procedure_type?: string;
+  references?: string[];
+  ocr_applied: boolean;
+  processing_time_ms: number;
+  extracted_at: string;
+}
+
+export interface DocumentVersion {
+  id: string;
+  version_number: number;
+  sha256_hash: string;
+  file_size_bytes: number;
+  change_summary?: string;
+  created_at: string;
+}
+
+export interface LegalDocument {
+  id: string;
+  tenant_id: string;
+  case_id?: string;
+  client_id?: string;
+  title: string;
+  filename: string;
+  file_size_bytes: number;
+  mime_type: string;
+  sha256_hash: string;
+  doc_type: string;
+  is_original: boolean;
+  is_confidential: boolean;
+  page_count: number;
+  created_at: string;
+  updated_at: string;
+  metadata_record?: DocumentMetadata;
+  versions: DocumentVersion[];
+}
+
+export interface DocumentPreview {
+  id: string;
+  title: string;
+  filename: string;
+  doc_type: string;
+  sha256_hash: string;
+  page_count: number;
+  raw_text: string;
+  metadata?: DocumentMetadata;
+}

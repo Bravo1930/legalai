@@ -23,6 +23,9 @@ class Tenant(Base):
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="tenant", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="tenant", cascade="all, delete-orphan")
+    clients = relationship("Client", back_populates="tenant", cascade="all, delete-orphan")
+    cases = relationship("Case", back_populates="tenant", cascade="all, delete-orphan")
+    documents = relationship("Document", back_populates="tenant", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Tenant {self.name} ({self.slug})>"
