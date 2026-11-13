@@ -168,6 +168,17 @@ class ExtractionService:
 
         if "pdf" in mime_type:
             raw_text, page_count, needs_ocr = ExtractionService.extract_text_from_pdf(file_path)
+            # Si es un documento escaneado (baja densidad de caracteres), procesar con OCR
+            if needs_ocr:
+                try:
+                    from app.services.ocr_service import OCRService
+                    if OCRService.is_ocr_available():
+                        ocr_text, ocr_pages = OCRService.extract_text_from_scanned_pdf(file_path)
+                        if ocr_text.strip():
+                            raw_text = ocr_text
+                            page_count = max(page_count, ocr_pages)
+                except Exception as e:
+                    logger.warning(f"Fallback de OCR en PDF escaneado falló: {e}")
         elif "wordprocessingml" in mime_type or "docx" in mime_type:
             raw_text = ExtractionService.extract_text_from_docx(file_path)
             page_count = max(1, len(raw_text) // 2500)
@@ -175,9 +186,17 @@ class ExtractionService:
             raw_text = ExtractionService.extract_text_from_txt(file_path)
             page_count = max(1, len(raw_text) // 2500)
         else:
-            # Imágenes u otros formatos
+            # Imágenes (PNG, JPEG, TIFF) u otros formatos escaneados
             needs_ocr = True
-            raw_text = f"[Documento en formato imagen ({mime_type}). Requiere OCR en segundo plano]"
+            try:
+                from app.services.ocr_service import OCRService
+                if OCRService.is_ocr_available():
+                    raw_text = OCRService.extract_text_from_image(file_path)
+                if not raw_text.strip():
+                    raw_text = f"[Documento en formato imagen ({mime_type}). No se detectó texto legible por OCR]"
+            except Exception as e:
+                logger.error(f"Fallo al ejecutar OCR en imagen: {e}")
+                raw_text = f"[Documento en formato imagen ({mime_type}). Error en procesamiento OCR: {e}]"
             page_count = 1
 
         # Blindaje contra Prompt Injections
