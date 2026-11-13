@@ -238,3 +238,86 @@ export interface RuleEvaluation {
   created_at: string;
   details: RuleEvaluationDetail[];
 }
+
+export interface LegalFoundation {
+  disposition_name: string;
+  article?: string;
+  jurisdiction: string;
+  publication_reform_date: string;
+  validity_status: "VIGENTE_VERIFICADA" | "REQUIERE_INVESTIGACION_JURIDICA";
+  official_source: string;
+  query_date: string;
+  is_verified: boolean;
+  verification_note?: string;
+}
+
+export interface LegalFinding {
+  id: string;
+  finding_code: string;
+  issue_type: string;
+  title: string;
+  description: string;
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "NO_OBSERVATIONS" | "REQUIRES_HUMAN_VALIDATION";
+  original_fragment?: string;
+  location?: string;
+  clause_ref?: string;
+  related_rule_code?: string;
+  legal_foundation?: LegalFoundation;
+  risk_explanation: string;
+  recommendation: string;
+  confidence_score: number;
+  confidence_level: "HIGH" | "MEDIUM" | "LOW";
+  review_status: "PENDING_REVIEW" | "VALIDATED" | "REJECTED" | "MODIFIED";
+  reviewed_by_id?: string;
+  reviewer_license?: string;
+  reviewer_notes?: string;
+  reviewed_at?: string;
+  created_at: string;
+}
+
+export interface ClauseDecomposition {
+  id: string;
+  clause_number: number;
+  title: string;
+  raw_text: string;
+  summary: string;
+  obligations: string[];
+  rights: string[];
+  deadlines: string[];
+  penalties: string[];
+}
+
+export interface AdvancedAnalysisSession {
+  id: string;
+  document_id: string;
+  overall_risk_score: number;
+  overall_severity: string;
+  findings_count: number;
+  critical_count: number;
+  high_count: number;
+  medium_count: number;
+  low_count: number;
+  pending_review_count: number;
+  summary?: string;
+  execution_time_ms: number;
+  created_at: string;
+  findings: LegalFinding[];
+  clauses: ClauseDecomposition[];
+}
+
+export interface VersionComparisonResult {
+  id: string;
+  document_id: string;
+  base_version_label: string;
+  compare_version_label: string;
+  added_clauses: Array<{ title: string; clause_number: number; summary: string; raw_text: string }>;
+  removed_clauses: Array<{ title: string; clause_number: number; summary: string; raw_text: string }>;
+  modified_clauses: Array<{ title: string; clause_number: number; change_summary: string; base_text: string; compare_text: string }>;
+  risk_delta: {
+    mitigated_risks: Array<{ title: string; severity: string; description?: string }>;
+    introduced_risks: Array<{ title: string; severity: string; description?: string }>;
+    persistent_risks: Array<{ title: string; severity: string }>;
+  };
+  summary: string;
+  created_at: string;
+}

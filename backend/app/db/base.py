@@ -13,6 +13,10 @@ from app.models.rule import (
     LegalRule, RuleVersion, RuleAuditLog, RuleEvaluation, RuleEvaluationDetail,
     RuleCategory, RuleSeverity, RuleOperator, RuleEvaluationStatus
 )
+from app.models.advanced_analysis import (
+    AdvancedAnalysisSession, LegalFinding, ClauseDecomposition, VersionComparison,
+    FindingIssueType, FindingSeverity, FindingReviewStatus
+)
 
 __all__ = [
     "Base",
@@ -40,5 +44,12 @@ __all__ = [
     "RuleCategory",
     "RuleSeverity",
     "RuleOperator",
-    "RuleEvaluationStatus"
+    "RuleEvaluationStatus",
+    "AdvancedAnalysisSession",
+    "LegalFinding",
+    "ClauseDecomposition",
+    "VersionComparison",
+    "FindingIssueType",
+    "FindingSeverity",
+    "FindingReviewStatus"
 ]

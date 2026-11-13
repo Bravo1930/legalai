@@ -33,9 +33,11 @@ import {
   Zap,
   HelpCircle,
   Lightbulb,
-  AlertTriangle
+  AlertTriangle,
+  ShieldAlert
 } from "lucide-react";
 import RulesEngineView from "@/components/RulesEngineView";
+import AdvancedAnalysisView from "@/components/AdvancedAnalysisView";
 
 const DOC_TYPES = [
   "CONTRATO", "CONVENIO", "DEMANDA", "CONTESTACION", 
@@ -59,7 +61,7 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<"documents" | "rules" | "ai" | "tasks">("documents");
+  const [activeTab, setActiveTab] = useState<"documents" | "advanced" | "rules" | "ai" | "tasks">("documents");
 
   // Documentos
   const [documents, setDocuments] = useState<LegalDocument[]>([]);
@@ -290,6 +292,21 @@ export default function DashboardPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab("advanced")}
+            className={`pb-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-all ${
+              activeTab === "advanced"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <ShieldAlert className="h-4 w-4 text-rose-600" />
+            <span>Análisis Jurídico Avanzado</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 font-bold border border-rose-200">
+              Auditoría Integral
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("rules")}
             className={`pb-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-all ${
               activeTab === "rules"
@@ -507,6 +524,16 @@ export default function DashboardPage() {
                             <button
                               onClick={() => {
                                 setSelectedDocForAI(d.id);
+                                setActiveTab("advanced");
+                              }}
+                              className="px-2.5 py-1 text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded font-semibold text-[11px] inline-flex items-center space-x-1"
+                            >
+                              <ShieldAlert className="h-3.5 w-3.5 text-rose-600" />
+                              <span>Análisis Avanzado</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedDocForAI(d.id);
                                 setActiveTab("ai");
                               }}
                               className="px-2.5 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded font-semibold text-[11px] inline-flex items-center space-x-1"
@@ -530,6 +557,12 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+        ) : activeTab === "advanced" ? (
+          <AdvancedAnalysisView
+            documents={documents}
+            initialSelectedDocId={selectedDocForAI || documents[0]?.id}
+            userRole={user?.role}
+          />
         ) : activeTab === "rules" ? (
           <RulesEngineView
             documents={documents}

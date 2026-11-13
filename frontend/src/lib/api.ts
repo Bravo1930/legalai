@@ -1,7 +1,8 @@
 import {
   AuthTokens, SystemHealth, UserProfile, AsyncTask, LegalDocument,
   DocumentPreview, Case, Client, AIModelInfo, AIAnalysisRecord,
-  LegalRule, RuleEvaluation, RuleEvaluationDetail
+  LegalRule, RuleEvaluation, RuleEvaluationDetail,
+  AdvancedAnalysisSession, LegalFinding, VersionComparisonResult
 } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
@@ -279,6 +280,66 @@ class ApiClient {
     });
     const resData = await res.json();
     if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al validar observación");
+    return resData;
+  }
+
+  // Motor Avanzado de Análisis Jurídico Documental
+  async runAdvancedAnalysis(documentId: string, versionId?: string): Promise<AdvancedAnalysisSession> {
+    const url = versionId
+      ? `${API_BASE_URL}/advanced-analysis/analyze/${documentId}?version_id=${versionId}`
+      : `${API_BASE_URL}/advanced-analysis/analyze/${documentId}`;
+    
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { ...this.getAuthHeader() },
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al ejecutar análisis jurídico avanzado");
+    return resData;
+  }
+
+  async getLatestDocumentAnalysis(documentId: string): Promise<AdvancedAnalysisSession | null> {
+    const res = await fetch(`${API_BASE_URL}/advanced-analysis/document/${documentId}`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar sesión de análisis");
+    return res.json();
+  }
+
+  async reviewFinding(findingId: string, reviewStatus: string, notes: string, license?: string): Promise<LegalFinding> {
+    const res = await fetch(`${API_BASE_URL}/advanced-analysis/findings/${findingId}/review`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({
+        review_status: reviewStatus,
+        reviewer_license: license || undefined,
+        reviewer_notes: notes,
+      }),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al revisar hallazgo");
+    return resData;
+  }
+
+  async compareVersions(documentId: string, baseText: string, compareText: string, baseLabel?: string, compareLabel?: string): Promise<VersionComparisonResult> {
+    const res = await fetch(`${API_BASE_URL}/advanced-analysis/compare/${documentId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({
+        base_text: baseText,
+        compare_text: compareText,
+        base_label: baseLabel || "Versión Base (Original)",
+        compare_label: compareLabel || "Versión Comparada (Revisada)",
+      }),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al comparar versiones");
     return resData;
   }
 }
