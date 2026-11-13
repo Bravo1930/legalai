@@ -321,3 +321,44 @@ export interface VersionComparisonResult {
   summary: string;
   created_at: string;
 }
+
+export interface LegalModificationProposal {
+  id: string;
+  batch_id: string;
+  document_id: string;
+  finding_id?: string;
+  clause_number?: number;
+  clause_title: string;
+  problem_explanation: string;
+  original_text: string;
+  proposed_text: string;
+  alternative_options: Array<{ label: string; text: string }>;
+  missing_data_placeholders: string[];
+  legal_foundation?: string;
+  diff_summary?: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'MODIFIED_BY_LAWYER';
+  lawyer_final_text?: string;
+  lawyer_notes?: string;
+  reviewed_by_id?: string;
+  reviewer_license?: string;
+  reviewed_at?: string;
+  created_at: string;
+}
+
+export interface ModificationProposalBatch {
+  id: string;
+  document_id: string;
+  document_version_id?: string;
+  title: string;
+  objective: string;
+  status: 'DRAFT' | 'READY_FOR_REVIEW' | 'PARTIALLY_ACCEPTED' | 'COMPLETED' | 'APPLIED_TO_VERSION';
+  total_proposals: number;
+  accepted_count: number;
+  rejected_count: number;
+  pending_count: number;
+  applied_version_number?: number;
+  created_at: string;
+  updated_at: string;
+  items: LegalModificationProposal[];
+}
+

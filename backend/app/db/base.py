@@ -17,6 +17,10 @@ from app.models.advanced_analysis import (
     AdvancedAnalysisSession, LegalFinding, ClauseDecomposition, VersionComparison,
     FindingIssueType, FindingSeverity, FindingReviewStatus
 )
+from app.models.modification import (
+    ModificationProposalBatch, LegalModificationProposal,
+    ProposalBatchStatus, ProposalItemStatus
+)
 
 __all__ = [
     "Base",
@@ -51,5 +55,9 @@ __all__ = [
     "VersionComparison",
     "FindingIssueType",
     "FindingSeverity",
-    "FindingReviewStatus"
+    "FindingReviewStatus",
+    "ModificationProposalBatch",
+    "LegalModificationProposal",
+    "ProposalBatchStatus",
+    "ProposalItemStatus"
 ]
