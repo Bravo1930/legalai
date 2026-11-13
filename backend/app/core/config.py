@@ -42,21 +42,27 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # Ollama Local (IA Soberana en Localhost)
+    # Ollama Local (IA Soberana en Localhost o Servidor Privado)
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
+    OLLAMA_API_KEY: str = ""  # Bearer token para proxy autenticado mTLS/Nginx
     OLLAMA_EMBEDDING_MODEL: str = "bge-m3:latest"
     OLLAMA_LLM_MODEL: str = "qwen3.5:4b"
     OLLAMA_CODER_MODEL: str = "qwen2.5-coder:7b"
     OLLAMA_TIMEOUT_SECONDS: int = 120
+    OLLAMA_ALLOW_PUBLIC_IPS: bool = False  # Barrera de datos: bloqueo estricto de exfiltración a IPs públicas o nubes externas
+    OLLAMA_VERIFY_SSL: bool = True
 
-    # Almacenamiento Documental Inmutable
-    STORAGE_BACKEND: str = "local"
+    # Almacenamiento Documental Inmutable (WORM Local / S3 / MinIO)
+    STORAGE_BACKEND: str = "local"  # "local" | "s3"
     LOCAL_STORAGE_PATH: str = "./storage/tenants"
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_REGION: str = "us-east-1"
     S3_BUCKET_NAME: str = "legal-ai-documents-vault"
-    S3_ENDPOINT_URL: str = ""
+    S3_ENDPOINT_URL: str = ""  # Para MinIO local (e.g. http://minio:9000) o AWS S3
+    S3_SERVER_SIDE_ENCRYPTION: str = "AES256"  # "AES256" | "aws:kms"
+    S3_KMS_KEY_ID: str = ""  # ARN de llave KMS de AWS cuando corresponda
+    STORAGE_WORM_ENABLED: bool = True
 
     # CORS
     CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000"]

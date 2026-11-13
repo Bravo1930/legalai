@@ -8,6 +8,13 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.core.errors import ValidationException, AppException
 
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+    BOTO3_AVAILABLE = True
+except ImportError:
+    BOTO3_AVAILABLE = False
+
 
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
@@ -141,4 +148,87 @@ class StorageService:
         else:
             logger.info(f"Documento con idéntico hash SHA-256 ya existe en bóveda: {target_file_path}")
 
+        # Integración S3 / MinIO (si STORAGE_BACKEND=s3)
+        if settings.STORAGE_BACKEND == "s3":
+            StorageService._upload_to_s3(
+                content=content,
+                tenant_id=str(tenant_id),
+                sha256_hash=sha256_hash,
+                detected_type=detected_type,
+                mime_type=mime_type,
+                safe_filename=safe_filename
+            )
+
         return target_file_path, sha256_hash, file_size, mime_type, safe_filename
+
+    @classmethod
+    def _get_s3_client(cls):
+        """Inicializa el cliente de boto3 con soporte para AWS S3 o MinIO."""
+        if not BOTO3_AVAILABLE:
+            raise AppException("boto3 no está instalado en el entorno.")
+        client_kwargs = {
+            "region_name": settings.AWS_REGION,
+        }
+        if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
+            client_kwargs["aws_access_key_id"] = settings.AWS_ACCESS_KEY_ID
+            client_kwargs["aws_secret_access_key"] = settings.AWS_SECRET_ACCESS_KEY
+        if settings.S3_ENDPOINT_URL:
+            client_kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+        return boto3.client("s3", **client_kwargs)
+
+    @classmethod
+    def _upload_to_s3(
+        cls,
+        content: bytes,
+        tenant_id: str,
+        sha256_hash: str,
+        detected_type: str,
+        mime_type: str,
+        safe_filename: str
+    ) -> str:
+        """Sube el objeto a S3/MinIO con cifrado en reposo (SSE-S3 o KMS) y metadata WORM."""
+        s3 = cls._get_s3_client()
+        s3_key = f"tenants/{tenant_id}/documents/{sha256_hash}.{detected_type}"
+        
+        extra_args = {
+            "ContentType": mime_type,
+            "Metadata": {
+                "sha256": sha256_hash,
+                "tenant_id": tenant_id,
+                "filename": safe_filename
+            }
+        }
+        if settings.S3_SERVER_SIDE_ENCRYPTION:
+            extra_args["ServerSideEncryption"] = settings.S3_SERVER_SIDE_ENCRYPTION
+            if settings.S3_KMS_KEY_ID:
+                extra_args["SSEKMSKeyId"] = settings.S3_KMS_KEY_ID
+
+        try:
+            s3.put_object(
+                Bucket=settings.S3_BUCKET_NAME,
+                Key=s3_key,
+                Body=content,
+                **extra_args
+            )
+            logger.info(f"Documento sincronizado con bóveda S3 ({settings.S3_BUCKET_NAME}/{s3_key})")
+            return f"s3://{settings.S3_BUCKET_NAME}/{s3_key}"
+        except Exception as e:
+            logger.error(f"Error al subir documento a S3: {e}")
+            raise AppException(f"Fallo en persistencia de bóveda S3: {str(e)}")
+
+    @classmethod
+    def generate_presigned_download_url(cls, s3_key: str, expires_in: int = 3600) -> Optional[str]:
+        """Genera una URL prefirmada para descarga autorizada temporal sin exponer credenciales."""
+        if settings.STORAGE_BACKEND != "s3":
+            return None
+        try:
+            s3 = cls._get_s3_client()
+            url = s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": settings.S3_BUCKET_NAME, "Key": s3_key},
+                ExpiresIn=expires_in
+            )
+            return url
+        except Exception as e:
+            logger.error(f"Error al generar URL prefirmada S3: {e}")
+            return None

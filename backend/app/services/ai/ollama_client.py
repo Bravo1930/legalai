@@ -1,23 +1,80 @@
 import time
 import json
 import httpx
+import ipaddress
+import urllib.parse
 from typing import List, Dict, Any, Optional
 from app.core.config import settings
 from app.core.logging import logger
-from app.core.errors import AppException
+from app.core.errors import AppException, ForbiddenException
 
 
 class OllamaClient:
-    """Cliente HTTP asíncrono para inferencia con modelos locales en Ollama."""
+    """Cliente HTTP asíncrono para inferencia privada con modelos locales en Ollama."""
 
-    def __init__(self, base_url: Optional[str] = None):
+    def __init__(self, base_url: Optional[str] = None, allow_public_ips: Optional[bool] = None):
         self.base_url = (base_url or settings.OLLAMA_BASE_URL).rstrip("/")
+        self.allow_public_ips = settings.OLLAMA_ALLOW_PUBLIC_IPS if allow_public_ips is None else allow_public_ips
         self.timeout = settings.OLLAMA_TIMEOUT_SECONDS
+        self._verify_private_endpoint(self.base_url)
+
+    def _verify_private_endpoint(self, url: str) -> None:
+        """
+        Barrera de Soberanía de Datos (Zero-Cloud-Egress Policy):
+        Garantiza que la URL de inferencia de IA no apunte a endpoints públicos ni a nubes
+        comerciales de IA no autorizadas para preservar el secreto profesional.
+        """
+        parsed = urllib.parse.urlparse(url)
+        hostname = (parsed.hostname or "").lower()
+
+        trusted_hosts = {"localhost", "127.0.0.1", "::1", "host.docker.internal", "ollama", "private-ollama"}
+        if hostname in trusted_hosts:
+            return
+
+        # Si no se permiten IPs públicas explícitamente, validar rango privado RFC1918
+        if not self.allow_public_ips:
+            try:
+                ip = ipaddress.ip_address(hostname)
+                if not (ip.is_private or ip.is_loopback):
+                    raise ForbiddenException(
+                        f"Violación de política de soberanía de datos: La IP de inferencia '{hostname}' es pública. "
+                        "El motor de IA debe residir en localhost o en una red privada autorizada."
+                    )
+            except ValueError:
+                # Es un FQDN; bloquear proveedores públicos de IA y dominios no autorizados
+                blocked_domains = [
+                    "openai.com", "anthropic.com", "amazonaws.com", 
+                    "azure.com", "googleapis.com", "groq.com", "cohere.com"
+                ]
+                if any(blocked in hostname for blocked in blocked_domains):
+                    raise ForbiddenException(
+                        f"Violación de confidencialidad jurídica: Está prohibido enviar documentos legales a proveedores externos ({hostname})."
+                    )
+                # Si es un FQDN que no pertenece a un espacio privado reconocido
+                private_suffixes = (".internal", ".local", ".lan", ".corp", ".priv", ".home.arpa")
+                if not (hostname.endswith(private_suffixes) or "." not in hostname):
+                    raise ForbiddenException(
+                        f"Violación de política de soberanía de datos: El host de inferencia '{hostname}' no es un dominio privado reconocido."
+                    )
+
+    def _get_headers(self) -> Dict[str, str]:
+        """Genera encabezados con token de autenticación para proxies privados."""
+        headers = {
+            "Content-Type": "application/json",
+            "X-Legal-Client": "LegalAI-Mexico-Production"
+        }
+        if settings.OLLAMA_API_KEY:
+            headers["Authorization"] = f"Bearer {settings.OLLAMA_API_KEY}"
+        return headers
 
     async def list_models(self) -> List[Dict[str, Any]]:
         """Consulta los modelos instalados en la instancia local de Ollama."""
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            async with httpx.AsyncClient(
+                timeout=5.0,
+                verify=settings.OLLAMA_VERIFY_SSL,
+                headers=self._get_headers()
+            ) as client:
                 res = await client.get(f"{self.base_url}/api/tags")
                 if res.status_code != 200:
                     raise AppException(f"Ollama respondió con código HTTP {res.status_code}")
@@ -96,7 +153,11 @@ class OllamaClient:
         last_error = None
         for attempt in range(max_retries + 1):
             try:
-                async with httpx.AsyncClient(timeout=float(self.timeout)) as client:
+                async with httpx.AsyncClient(
+                    timeout=float(self.timeout),
+                    verify=settings.OLLAMA_VERIFY_SSL,
+                    headers=self._get_headers()
+                ) as client:
                     resp = await client.post(f"{self.base_url}/api/chat", json=payload)
                     
                     if resp.status_code == 200:

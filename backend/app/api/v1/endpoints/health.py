@@ -47,9 +47,13 @@ async def health_check():
         base_url=settings.OLLAMA_BASE_URL,
         models_available=[]
     )
+    headers = {"Content-Type": "application/json"}
+    if settings.OLLAMA_API_KEY:
+        headers["Authorization"] = f"Bearer {settings.OLLAMA_API_KEY}"
+
     try:
-        async with httpx.AsyncClient(timeout=1.0) as client:
-            resp = await client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
+        async with httpx.AsyncClient(timeout=1.0, verify=settings.OLLAMA_VERIFY_SSL) as client:
+            resp = await client.get(f"{settings.OLLAMA_BASE_URL}/api/tags", headers=headers)
             if resp.status_code == 200:
                 data = resp.json()
                 models = [m["name"] for m in data.get("models", [])]
