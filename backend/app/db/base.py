@@ -21,6 +21,12 @@ from app.models.modification import (
     ModificationProposalBatch, LegalModificationProposal,
     ProposalBatchStatus, ProposalItemStatus
 )
+from app.models.workflow import (
+    DocumentWorkflow, WorkflowTransition, WorkflowComment,
+    CorrectionRequest, WorkflowApprovalRecord, WorkflowReminder,
+    WorkflowNotification, WorkflowIntegrationConfig,
+    WorkflowState, ApprovalScope
+)
 
 __all__ = [
     "Base",
@@ -59,5 +65,15 @@ __all__ = [
     "ModificationProposalBatch",
     "LegalModificationProposal",
     "ProposalBatchStatus",
-    "ProposalItemStatus"
+    "ProposalItemStatus",
+    "DocumentWorkflow",
+    "WorkflowTransition",
+    "WorkflowComment",
+    "CorrectionRequest",
+    "WorkflowApprovalRecord",
+    "WorkflowReminder",
+    "WorkflowNotification",
+    "WorkflowIntegrationConfig",
+    "WorkflowState",
+    "ApprovalScope"
 ]

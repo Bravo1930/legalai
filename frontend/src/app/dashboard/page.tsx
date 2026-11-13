@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { UserProfile, LegalDocument, DocumentPreview, AsyncTask, AIModelInfo, AIAnalysisRecord } from "@/types";
+import { UserProfile, LegalDocument, DocumentPreview, AsyncTask, AIModelInfo, AIAnalysisRecord, WorkflowNotification } from "@/types";
 import { 
   Scale, 
   Building, 
@@ -35,11 +35,14 @@ import {
   Lightbulb,
   AlertTriangle,
   ShieldAlert,
-  FileEdit
+  FileEdit,
+  GitMerge,
+  Bell
 } from "lucide-react";
 import RulesEngineView from "@/components/RulesEngineView";
 import AdvancedAnalysisView from "@/components/AdvancedAnalysisView";
 import ModificationsView from "@/components/ModificationsView";
+import WorkflowView from "@/components/WorkflowView";
 
 const DOC_TYPES = [
   "CONTRATO", "CONVENIO", "DEMANDA", "CONTESTACION", 
@@ -63,7 +66,12 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<"documents" | "advanced" | "rules" | "modifications" | "ai" | "tasks">("documents");
+  const [activeTab, setActiveTab] = useState<"documents" | "advanced" | "rules" | "modifications" | "workflow" | "ai" | "tasks">("documents");
+
+  // Notificaciones In-App
+  const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [showNotifMenu, setShowNotifMenu] = useState<boolean>(false);
 
   // Documentos
   const [documents, setDocuments] = useState<LegalDocument[]>([]);
@@ -107,7 +115,37 @@ export default function DashboardPage() {
     loadDocuments();
     loadTasks();
     loadAIModels();
+    loadNotifications();
   }, [router]);
+
+  const loadNotifications = async () => {
+    try {
+      const count = await api.getUnreadNotificationsCount();
+      setUnreadCount(count);
+      const list = await api.listNotifications(false);
+      setNotifications(list);
+    } catch (err) {
+      console.error("Error al cargar notificaciones:", err);
+    }
+  };
+
+  const handleMarkNotificationRead = async (notifId: string) => {
+    try {
+      await api.markNotificationRead(notifId);
+      await loadNotifications();
+    } catch (err) {
+      console.error("Error al marcar notificación:", err);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    try {
+      await api.markAllNotificationsRead();
+      await loadNotifications();
+    } catch (err) {
+      console.error("Error al marcar todas las notificaciones:", err);
+    }
+  };
 
   const loadDocuments = async () => {
     setLoadingDocs(true);
@@ -259,6 +297,68 @@ export default function DashboardPage() {
               <span className="font-semibold text-white">{user.tenant_name}</span>
             </div>
 
+            {/* Centro de Notificaciones In-App */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifMenu(!showNotifMenu)}
+                title="Notificaciones Jurídicas"
+                className="relative p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[10px] font-bold text-white shadow-xs">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Dropdown Popover */}
+              {showNotifMenu && (
+                <div className="absolute right-0 mt-2 w-80 md:w-96 rounded-xl bg-white shadow-2xl border border-slate-200 z-50 text-slate-900 overflow-hidden">
+                  <div className="p-3 bg-slate-900 text-white flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Bell className="h-4 w-4 text-amber-400" />
+                      <span className="text-xs font-bold">Alertas y Notificaciones</span>
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllNotificationsRead}
+                        className="text-[10px] text-amber-300 hover:text-amber-200 underline font-medium"
+                      >
+                        Marcar todas leídas
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400">
+                        No hay notificaciones en su buzón.
+                      </div>
+                    ) : (
+                      notifications.slice(0, 10).map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => handleMarkNotificationRead(n.id)}
+                          className={`p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors ${
+                            !n.is_read ? "bg-amber-50/40 font-medium" : "text-slate-600"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-1">
+                            <span className="font-bold text-slate-900 text-[11px] block">{n.title}</span>
+                            <span className="text-[10px] text-slate-400 font-mono flex-shrink-0">
+                              {new Date(n.created_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{n.message}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center space-x-3 border-l border-slate-800 pl-6">
               <div className="text-right">
                 <span className="text-xs font-semibold block text-white">{user.full_name}</span>
@@ -335,6 +435,21 @@ export default function DashboardPage() {
             <span>Propuestas y Redacción</span>
             <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-800 font-bold border border-amber-200">
               HITL & Versiones
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("workflow")}
+            className={`pb-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-all ${
+              activeTab === "workflow"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <GitMerge className="h-4 w-4 text-blue-600" />
+            <span>Flujos de Trabajo Jurídicos</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-50 text-blue-800 font-bold border border-blue-200">
+              Gobernanza & Aprobación
             </span>
           </button>
 
@@ -561,6 +676,16 @@ export default function DashboardPage() {
                             <button
                               onClick={() => {
                                 setSelectedDocForAI(d.id);
+                                setActiveTab("workflow");
+                              }}
+                              className="px-2.5 py-1 text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded font-semibold text-[11px] inline-flex items-center space-x-1"
+                            >
+                              <GitMerge className="h-3.5 w-3.5 text-blue-600" />
+                              <span>Flujo</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedDocForAI(d.id);
                                 setActiveTab("ai");
                               }}
                               className="px-2.5 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded font-semibold text-[11px] inline-flex items-center space-x-1"
@@ -598,6 +723,12 @@ export default function DashboardPage() {
           />
         ) : activeTab === "modifications" ? (
           <ModificationsView
+            documents={documents}
+            initialSelectedDocId={selectedDocForAI || documents[0]?.id}
+            userRole={user?.role}
+          />
+        ) : activeTab === "workflow" ? (
+          <WorkflowView
             documents={documents}
             initialSelectedDocId={selectedDocForAI || documents[0]?.id}
             userRole={user?.role}

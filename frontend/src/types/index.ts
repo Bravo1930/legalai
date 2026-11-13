@@ -362,3 +362,130 @@ export interface ModificationProposalBatch {
   items: LegalModificationProposal[];
 }
 
+export type WorkflowState =
+  | 'RECEIVED'
+  | 'PENDING_PROCESSING'
+  | 'PROCESSING'
+  | 'ANALYSIS_COMPLETED'
+  | 'WITH_OBSERVATIONS'
+  | 'PENDING_REVIEW'
+  | 'IN_CORRECTION'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'ARCHIVED';
+
+export interface WorkflowTransition {
+  id: string;
+  workflow_id: string;
+  from_state: string;
+  to_state: string;
+  triggered_by_id?: string;
+  trigger_type: string;
+  reason?: string;
+  transition_metadata?: Record<string, any>;
+  created_at: string;
+}
+
+export interface WorkflowComment {
+  id: string;
+  workflow_id: string;
+  author_id?: string;
+  author_name: string;
+  author_role: string;
+  comment_text: string;
+  is_internal_only: boolean;
+  clause_reference?: string;
+  created_at: string;
+}
+
+export interface CorrectionRequest {
+  id: string;
+  workflow_id: string;
+  requested_by_id?: string;
+  requested_to_id?: string;
+  title: string;
+  description: string;
+  target_clause?: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'DISMISSED';
+  resolution_notes?: string;
+  resolved_by_id?: string;
+  resolved_at?: string;
+  created_at: string;
+}
+
+export interface WorkflowApprovalRecord {
+  id: string;
+  workflow_id: string;
+  document_id: string;
+  user_id?: string;
+  user_name: string;
+  user_role: string;
+  version_number: number;
+  document_hash: string;
+  scope: string;
+  status: 'VALID' | 'INVALIDATED_BY_CONTENT_CHANGE' | 'REVOKED';
+  invalidation_reason?: string;
+  invalidated_at?: string;
+  invalidated_by_version?: number;
+  reviewer_license?: string;
+  approval_notes?: string;
+  approved_at: string;
+}
+
+export interface WorkflowReminder {
+  id: string;
+  workflow_id: string;
+  recipient_id: string;
+  remind_at: string;
+  message: string;
+  is_sent: boolean;
+  sent_at?: string;
+  created_at: string;
+}
+
+export interface DocumentWorkflow {
+  id: string;
+  tenant_id: string;
+  document_id: string;
+  current_state: WorkflowState;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  assigned_lawyer_id?: string;
+  reviewer_id?: string;
+  assistant_id?: string;
+  assigned_by_id?: string;
+  assigned_at?: string;
+  deadline_at?: string;
+  is_overdue: boolean;
+  allow_assistant_approval: boolean;
+  created_at: string;
+  updated_at: string;
+  transitions: WorkflowTransition[];
+  comments: WorkflowComment[];
+  corrections: CorrectionRequest[];
+  approvals: WorkflowApprovalRecord[];
+}
+
+export interface AllowedTransitionOption {
+  target_state: WorkflowState;
+  can_execute: boolean;
+  block_reason?: string;
+  requires_reason: boolean;
+  requires_license: boolean;
+}
+
+export interface WorkflowNotification {
+  id: string;
+  tenant_id: string;
+  recipient_id: string;
+  document_id?: string;
+  notification_type: string;
+  title: string;
+  message: string;
+  payload?: Record<string, any>;
+  is_read: boolean;
+  read_at?: string;
+  created_at: string;
+}
+
+

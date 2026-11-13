@@ -151,6 +151,15 @@ class VersionCompiler:
         batch.applied_version_number = next_version_num
         batch.updated_at = datetime.now(timezone.utc)
 
+        # 10.5 Regla de aprobación: Invalidar automáticamente aprobaciones de versiones anteriores
+        from app.services.workflow.approval_service import ApprovalService
+        approval_srv = ApprovalService(self.db)
+        approval_srv.invalidate_approvals_on_change(
+            document_id=document.id,
+            new_version_number=next_version_num,
+            reason=f"Se compiló la versión oficial {next_version_num} alterando el contenido de las versiones previas."
+        )
+
         # 11. Registro formal de aprobación humana (HITL)
         approval = LegalApproval(
             id=uuid.uuid4(),

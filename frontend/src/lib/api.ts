@@ -3,7 +3,10 @@ import {
   DocumentPreview, Case, Client, AIModelInfo, AIAnalysisRecord,
   LegalRule, RuleEvaluation, RuleEvaluationDetail,
   AdvancedAnalysisSession, LegalFinding, VersionComparisonResult,
-  LegalModificationProposal, ModificationProposalBatch
+  LegalModificationProposal, ModificationProposalBatch,
+  DocumentWorkflow, WorkflowTransition, WorkflowComment,
+  CorrectionRequest, WorkflowApprovalRecord, WorkflowNotification,
+  AllowedTransitionOption
 } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
@@ -454,6 +457,202 @@ class ApiClient {
     a.click();
     window.URL.revokeObjectURL(downloadUrl);
     document.body.removeChild(a);
+  }
+
+  // Motor de Automatización de Flujos de Trabajo Jurídicos
+  async getDocumentWorkflow(documentId: string): Promise<DocumentWorkflow> {
+    const res = await fetch(`${API_BASE_URL}/workflow/document/${documentId}`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar flujo de trabajo del documento");
+    return res.json();
+  }
+
+  async getWorkflowDetail(workflowId: string): Promise<DocumentWorkflow> {
+    const res = await fetch(`${API_BASE_URL}/workflow/${workflowId}`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar expediente de flujo de trabajo");
+    return res.json();
+  }
+
+  async getAllowedTransitions(workflowId: string): Promise<AllowedTransitionOption[]> {
+    const res = await fetch(`${API_BASE_URL}/workflow/${workflowId}/allowed-transitions`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar transiciones permitidas");
+    return res.json();
+  }
+
+  async assignWorkflowTeam(workflowId: string, data: {
+    assigned_lawyer_id?: string;
+    reviewer_id?: string;
+    assistant_id?: string;
+    deadline_at?: string;
+    priority?: string;
+    allow_assistant_approval?: boolean;
+  }): Promise<DocumentWorkflow> {
+    const res = await fetch(`${API_BASE_URL}/workflow/${workflowId}/assign`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al asignar equipo legal");
+    return resData;
+  }
+
+  async executeWorkflowTransition(
+    workflowId: string,
+    targetState: string,
+    reason?: string,
+    metadata?: Record<string, any>
+  ): Promise<DocumentWorkflow> {
+    const res = await fetch(`${API_BASE_URL}/workflow/${workflowId}/transition`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({
+        target_state: targetState,
+        reason: reason || undefined,
+        metadata: metadata || undefined,
+      }),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al ejecutar transición");
+    return resData;
+  }
+
+  async addWorkflowComment(
+    workflowId: string,
+    commentText: string,
+    clauseReference?: string,
+    isInternalOnly: boolean = true
+  ): Promise<WorkflowComment> {
+    const res = await fetch(`${API_BASE_URL}/workflow/${workflowId}/comments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({
+        comment_text: commentText,
+        clause_reference: clauseReference || undefined,
+        is_internal_only: isInternalOnly,
+      }),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al agregar comentario");
+    return resData;
+  }
+
+  async requestWorkflowCorrection(
+    workflowId: string,
+    title: string,
+    description: string,
+    targetClause?: string,
+    requestedToId?: string
+  ): Promise<CorrectionRequest> {
+    const res = await fetch(`${API_BASE_URL}/workflow/${workflowId}/corrections`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({
+        title,
+        description,
+        target_clause: targetClause || undefined,
+        requested_to_id: requestedToId || undefined,
+      }),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al solicitar corrección");
+    return resData;
+  }
+
+  async resolveWorkflowCorrection(
+    correctionId: string,
+    resolutionNotes: string
+  ): Promise<CorrectionRequest> {
+    const res = await fetch(`${API_BASE_URL}/workflow/corrections/${correctionId}/resolve`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({
+        resolution_notes: resolutionNotes,
+      }),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al resolver corrección");
+    return resData;
+  }
+
+  async submitWorkflowApproval(
+    workflowId: string,
+    scope: string = "DEFINITIVE_APPROVAL",
+    reviewerLicense?: string,
+    notes?: string
+  ): Promise<WorkflowApprovalRecord> {
+    const res = await fetch(`${API_BASE_URL}/workflow/${workflowId}/approve`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({
+        scope,
+        reviewer_license: reviewerLicense || undefined,
+        notes: notes || undefined,
+      }),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al emitir aprobación");
+    return resData;
+  }
+
+  // Notificaciones In-App
+  async listNotifications(unreadOnly: boolean = false): Promise<WorkflowNotification[]> {
+    const res = await fetch(`${API_BASE_URL}/workflow/notifications/list?unread_only=${unreadOnly}`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar notificaciones");
+    return res.json();
+  }
+
+  async getUnreadNotificationsCount(): Promise<number> {
+    const res = await fetch(`${API_BASE_URL}/workflow/notifications/unread-count`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) return 0;
+    const data = await res.json();
+    return data.unread_count || 0;
+  }
+
+  async markNotificationRead(notificationId: string): Promise<WorkflowNotification> {
+    const res = await fetch(`${API_BASE_URL}/workflow/notifications/${notificationId}/read`, {
+      method: "PATCH",
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al marcar notificación como leída");
+    return res.json();
+  }
+
+  async markAllNotificationsRead(): Promise<number> {
+    const res = await fetch(`${API_BASE_URL}/workflow/notifications/read-all`, {
+      method: "POST",
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al marcar todas las notificaciones como leídas");
+    const data = await res.json();
+    return data.marked_read_count || 0;
   }
 }
 
