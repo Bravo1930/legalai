@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.exc import SQLAlchemyError
 from app.core.logging import logger
 
@@ -85,12 +86,16 @@ class DatabaseException(AppException):
 
 def build_error_response(status_code: int, code: str, message: str, details: Any, request: Request) -> JSONResponse:
     request_id = getattr(request.state, "request_id", "NO_REQ_ID")
+    try:
+        safe_details = jsonable_encoder(details)
+    except Exception:
+        safe_details = str(details)
     content = {
         "success": False,
         "error": {
             "code": code,
             "message": message,
-            "details": details,
+            "details": safe_details,
             "request_id": request_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "path": request.url.path,
@@ -116,11 +121,21 @@ def setup_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         logger.warning(f"[VALIDATION_ERROR] Fallo de validación en: {request.url.path}")
+        safe_errors = []
+        for err in exc.errors():
+            loc = err.get("loc", ())
+            msg = err.get("msg", "")
+            err_type = err.get("type", "")
+            safe_errors.append({
+                "loc": [str(x) for x in loc],
+                "msg": str(msg),
+                "type": str(err_type)
+            })
         return build_error_response(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             code="REQUEST_VALIDATION_ERROR",
             message="Los parámetros enviados no cumplen con el esquema requerido",
-            details=exc.errors(),
+            details=safe_errors,
             request=request
         )
 
