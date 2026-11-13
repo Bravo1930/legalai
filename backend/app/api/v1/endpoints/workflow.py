@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.user import User
+from app.models.workflow import WorkflowApprovalRecord, DocumentWorkflow
 from app.schemas.workflow import (
     DocumentWorkflowResponse,
     WorkflowTransitionResponse,
@@ -189,6 +190,27 @@ def submit_approval(
         scope=data.scope,
         reviewer_license=data.reviewer_license,
         notes=data.notes
+    )
+
+
+@router.get("/approvals/list", response_model=List[WorkflowApprovalRecordResponse], summary="Listar aprobaciones formales del despacho")
+def list_tenant_approvals(
+    limit: int = 50,
+    skip: int = 0,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retorna el historial de firmas y aprobaciones HITL del despacho."""
+    if current_user.role == "SUPER_ADMIN":
+        return []
+    return (
+        db.query(WorkflowApprovalRecord)
+        .join(DocumentWorkflow, DocumentWorkflow.id == WorkflowApprovalRecord.workflow_id)
+        .filter(DocumentWorkflow.tenant_id == current_user.tenant_id)
+        .order_by(WorkflowApprovalRecord.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
     )
 
 

@@ -4,13 +4,46 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.security import LegalRoles
-from app.schemas.tenant import TenantCreate, TenantResponse
+from app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse
 from app.schemas.common import APIResponse
 from app.models.user import User
 from app.services.tenant_service import TenantService
 from app.services.auth_service import get_current_user, require_roles
+from app.core.errors import NotFoundException, ForbiddenException
 
 router = APIRouter()
+
+
+@router.get("/current/me", response_model=TenantResponse, summary="Obtener perfil del despacho actual")
+def get_current_tenant_profile(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Retorna los datos del despacho del usuario en sesión."""
+    if not current_user.tenant_id:
+        raise NotFoundException("El usuario no tiene un despacho asignado.")
+    return TenantService.get_tenant_by_id(db=db, tenant_id=current_user.tenant_id)
+
+
+@router.put("/current/me", response_model=TenantResponse, summary="Actualizar perfil del despacho actual")
+def update_current_tenant_profile(
+    tenant_in: TenantUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([LegalRoles.SUPER_ADMIN, LegalRoles.MANAGING_PARTNER]))
+):
+    """Actualiza la razón social, RFC o correo de contacto del despacho."""
+    if not current_user.tenant_id:
+        raise NotFoundException("El usuario no tiene un despacho asignado.")
+    tenant = TenantService.get_tenant_by_id(db=db, tenant_id=current_user.tenant_id)
+    if tenant_in.name:
+        tenant.name = tenant_in.name.strip()
+    if tenant_in.rfc is not None:
+        tenant.rfc = tenant_in.rfc.strip().upper() if tenant_in.rfc else None
+    if tenant_in.contact_email:
+        tenant.contact_email = tenant_in.contact_email
+    db.commit()
+    db.refresh(tenant)
+    return tenant
 
 
 @router.post("", response_model=TenantResponse, summary="Registrar nuevo despacho jurídico (SaaS)")

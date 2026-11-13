@@ -6,7 +6,7 @@ import {
   LegalModificationProposal, ModificationProposalBatch,
   DocumentWorkflow, WorkflowTransition, WorkflowComment,
   CorrectionRequest, WorkflowApprovalRecord, WorkflowNotification,
-  AllowedTransitionOption
+  AllowedTransitionOption, DashboardAnalytics, AuditLogEntry, Tenant
 } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
@@ -150,12 +150,40 @@ class ApiClient {
     return res.json();
   }
 
+  async createCase(data: any): Promise<Case> {
+    const res = await fetch(`${API_BASE_URL}/cases`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al crear expediente");
+    return resData;
+  }
+
   async listClients(): Promise<Client[]> {
     const res = await fetch(`${API_BASE_URL}/clients`, {
       headers: { ...this.getAuthHeader() },
     });
     if (!res.ok) throw new Error("Error al listar clientes");
     return res.json();
+  }
+
+  async createClient(data: any): Promise<Client> {
+    const res = await fetch(`${API_BASE_URL}/clients`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al registrar cliente");
+    return resData;
   }
 
   // Agentes de Inteligencia Artificial (Ollama Local)
@@ -653,6 +681,104 @@ class ApiClient {
     if (!res.ok) throw new Error("Error al marcar todas las notificaciones como leídas");
     const data = await res.json();
     return data.marked_read_count || 0;
+  }
+
+  // Usuarios del Despacho
+  async listUsers(): Promise<UserProfile[]> {
+    const res = await fetch(`${API_BASE_URL}/users`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar usuarios del despacho");
+    return res.json();
+  }
+
+  async createUser(data: any): Promise<UserProfile> {
+    const res = await fetch(`${API_BASE_URL}/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al crear usuario");
+    return resData;
+  }
+
+  // Despachos (Tenants)
+  async listTenants(): Promise<Tenant[]> {
+    const res = await fetch(`${API_BASE_URL}/tenants`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar lista de despachos");
+    return res.json();
+  }
+
+  async getCurrentTenant(): Promise<Tenant> {
+    const res = await fetch(`${API_BASE_URL}/tenants/current/me`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar datos del despacho");
+    return res.json();
+  }
+
+  async updateCurrentTenant(data: { name?: string; rfc?: string; contact_email?: string }): Promise<Tenant> {
+    const res = await fetch(`${API_BASE_URL}/tenants/current/me`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al actualizar datos del despacho");
+    return resData;
+  }
+
+  // Hallazgos y Riesgos en el Despacho
+  async listAllFindings(severity?: string, reviewStatus?: string): Promise<LegalFinding[]> {
+    const params = new URLSearchParams();
+    if (severity) params.append("severity", severity);
+    if (reviewStatus) params.append("review_status", reviewStatus);
+
+    const res = await fetch(`${API_BASE_URL}/advanced-analysis/findings?${params.toString()}`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar hallazgos de análisis");
+    return res.json();
+  }
+
+  // Aprobaciones Formales
+  async listApprovals(): Promise<WorkflowApprovalRecord[]> {
+    const res = await fetch(`${API_BASE_URL}/workflow/approvals/list`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar historial de aprobaciones");
+    return res.json();
+  }
+
+  // Dashboard & Métricas Reales
+  async getDashboardAnalytics(): Promise<DashboardAnalytics> {
+    const res = await fetch(`${API_BASE_URL}/analytics/dashboard`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar métricas del dashboard");
+    return res.json();
+  }
+
+  // Auditoría Forense
+  async listAuditLogs(action?: string, resourceType?: string): Promise<AuditLogEntry[]> {
+    const params = new URLSearchParams();
+    if (action) params.append("action", action);
+    if (resourceType) params.append("resource_type", resourceType);
+
+    const res = await fetch(`${API_BASE_URL}/audit?${params.toString()}`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar bitácora de auditoría");
+    return res.json();
   }
 }
 

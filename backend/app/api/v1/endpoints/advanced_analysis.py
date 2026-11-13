@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.user import User
+from app.models.advanced_analysis import LegalFinding
 from app.schemas.advanced_analysis import (
     AdvancedAnalysisSessionResponse,
     LegalFindingResponse,
@@ -16,6 +17,26 @@ from app.services.auth_service import get_current_user
 from app.services.analysis.advanced_analysis_engine import AdvancedAnalysisEngine
 
 router = APIRouter()
+
+
+@router.get("/findings", response_model=List[LegalFindingResponse], summary="Listar hallazgos de análisis en el despacho")
+def list_findings(
+    severity: Optional[str] = Query(None, description="Filtrar por severidad: CRITICO, ALTO, MEDIO, BAJO"),
+    review_status: Optional[str] = Query(None, description="Filtrar por estado de revisión"),
+    limit: int = 50,
+    skip: int = 0,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Lista todos los hallazgos de análisis del despacho con filtros de severidad y estado."""
+    if current_user.role == "SUPER_ADMIN":
+        return []
+    query = db.query(LegalFinding).filter(LegalFinding.tenant_id == current_user.tenant_id)
+    if severity:
+        query = query.filter(LegalFinding.severity == severity.upper())
+    if review_status:
+        query = query.filter(LegalFinding.review_status == review_status.upper())
+    return query.order_by(LegalFinding.created_at.desc()).offset(skip).limit(limit).all()
 
 
 @router.post("/analyze/{document_id}", response_model=AdvancedAnalysisSessionResponse, status_code=status.HTTP_201_CREATED, summary="Ejecutar análisis jurídico documental integral")

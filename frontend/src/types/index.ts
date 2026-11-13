@@ -7,7 +7,9 @@ export interface UserProfile {
   full_name: string;
   role: "SUPER_ADMIN" | "MANAGING_PARTNER" | "SENIOR_LAWYER" | "ASSOCIATE_LAWYER" | "PARALEGAL" | "AUDITOR";
   professional_license?: string;
+  bar_license_number?: string;
   is_active: boolean;
+  created_at?: string;
 }
 
 export interface AuthTokens {
@@ -253,6 +255,7 @@ export interface LegalFoundation {
 
 export interface LegalFinding {
   id: string;
+  document_id?: string;
   finding_code: string;
   issue_type: string;
   title: string;
@@ -431,6 +434,7 @@ export interface WorkflowApprovalRecord {
   reviewer_license?: string;
   approval_notes?: string;
   approved_at: string;
+  created_at?: string;
 }
 
 export interface WorkflowReminder {
@@ -487,5 +491,64 @@ export interface WorkflowNotification {
   read_at?: string;
   created_at: string;
 }
+
+export interface DashboardAnalytics {
+  is_global_admin: boolean;
+  tenant_id?: string;
+  total_documents: number;
+  received_documents: number;
+  processing_documents: number;
+  processed_documents: number;
+  pending_reviews: number;
+  approved_documents: number;
+  rejected_documents: number;
+  in_correction_documents: number;
+  critical_risks: number;
+  high_risks: number;
+  total_cases: number;
+  total_clients: number;
+  avg_review_time_hours: number;
+  workload_by_lawyer: Array<{
+    lawyer_id: string;
+    lawyer_name: string;
+    role: string;
+    license?: string;
+    active_documents: number;
+    pending_reviews: number;
+    approved_documents: number;
+  }>;
+  recent_activity: Array<{
+    id: string;
+    event_type: string;
+    actor: string;
+    description: string;
+    reason?: string;
+    timestamp: string;
+  }>;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  tenant_id: string;
+  user_id?: string;
+  user_name?: string;
+  action: string;
+  resource_type: string;
+  resource_id?: string;
+  details?: Record<string, any>;
+  ip_address?: string;
+  created_at: string;
+}
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  rfc?: string;
+  contact_email: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 
 

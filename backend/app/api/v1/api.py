@@ -1,5 +1,8 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, tenants, users, tasks, clients, cases, documents, ai, rules, advanced_analysis, modifications, workflow
+from app.api.v1.endpoints import (
+    health, auth, tenants, users, tasks, clients, cases, documents,
+    ai, rules, advanced_analysis, modifications, workflow, analytics, audit
+)
 
 api_router = APIRouter()
 
@@ -16,3 +19,5 @@ api_router.include_router(rules.router, prefix="/rules", tags=["Motor de Reglas 
 api_router.include_router(advanced_analysis.router, prefix="/advanced-analysis", tags=["Motor Avanzado de Análisis Jurídico"])
 api_router.include_router(modifications.router, prefix="/modifications", tags=["Propuestas y Modificaciones Jurídicas"])
 api_router.include_router(workflow.router, prefix="/workflow", tags=["Automatización de Flujos Jurídicos & Aprobaciones"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["Analítica de Productividad & Métricas"])
+api_router.include_router(audit.router, prefix="/audit", tags=["Auditoría Forense Inmutable"])
