@@ -1,4 +1,8 @@
-import { AuthTokens, SystemHealth, UserProfile, AsyncTask, LegalDocument, DocumentPreview, Case, Client, AIModelInfo, AIAnalysisRecord } from "@/types";
+import {
+  AuthTokens, SystemHealth, UserProfile, AsyncTask, LegalDocument,
+  DocumentPreview, Case, Client, AIModelInfo, AIAnalysisRecord,
+  LegalRule, RuleEvaluation, RuleEvaluationDetail
+} from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
@@ -185,6 +189,97 @@ class ApiClient {
     });
     if (!res.ok) throw new Error("Error al consultar historial de análisis de IA");
     return res.json();
+  }
+
+  // Motor de Reglas Deterministas
+  async listRules(category?: string, severity?: string, isActive?: boolean): Promise<LegalRule[]> {
+    const params = new URLSearchParams();
+    if (category) params.append("category", category);
+    if (severity) params.append("severity", severity);
+    if (isActive !== undefined) params.append("is_active", String(isActive));
+
+    const res = await fetch(`${API_BASE_URL}/rules?${params.toString()}`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al listar catálogo de reglas deterministas");
+    return res.json();
+  }
+
+  async createRule(data: any): Promise<LegalRule> {
+    const res = await fetch(`${API_BASE_URL}/rules`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al crear regla determinista");
+    return resData;
+  }
+
+  async updateRule(ruleId: string, data: any): Promise<LegalRule> {
+    const res = await fetch(`${API_BASE_URL}/rules/${ruleId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al actualizar regla");
+    return resData;
+  }
+
+  async toggleRuleStatus(ruleId: string, isActive: boolean, reason?: string): Promise<LegalRule> {
+    const res = await fetch(`${API_BASE_URL}/rules/${ruleId}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({ is_active: isActive, reason }),
+    });
+    if (!res.ok) throw new Error("Error al modificar estado de la regla");
+    return res.json();
+  }
+
+  async evaluateDocumentRules(documentId: string, ruleIds?: string[]): Promise<RuleEvaluation> {
+    const res = await fetch(`${API_BASE_URL}/rules/evaluate/${documentId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify(ruleIds || null),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al evaluar reglas deterministas");
+    return resData;
+  }
+
+  async listDocumentEvaluations(documentId: string): Promise<RuleEvaluation[]> {
+    const res = await fetch(`${API_BASE_URL}/rules/evaluations/${documentId}`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al obtener historial de evaluaciones deterministas");
+    return res.json();
+  }
+
+  async verifyEvaluationDetail(detailId: string, status: string, notes: string): Promise<RuleEvaluationDetail> {
+    const res = await fetch(`${API_BASE_URL}/rules/evaluations/detail/${detailId}/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({ status, notes }),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error al validar observación");
+    return resData;
   }
 }
 

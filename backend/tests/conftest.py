@@ -71,3 +71,45 @@ def lawyer_headers(db_session):
         "professional_license": lawyer_user.professional_license
     })
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="session")
+def setup_second_tenant(db_session):
+    """Crea un segundo despacho y un abogado para probar aislamiento horizontal."""
+    import uuid
+    slug_b = f"despacho-b-{uuid.uuid4().hex[:6]}"
+    tenant_b = Tenant(
+        name="Corporativo Jurídico del Norte S.C.",
+        slug=slug_b,
+        rfc="CJN220303XY9",
+        contact_email=f"contacto@{slug_b}.com"
+    )
+    db_session.add(tenant_b)
+    db_session.commit()
+    db_session.refresh(tenant_b)
+
+    user_b = User(
+        tenant_id=tenant_b.id,
+        email=f"abogado@{slug_b}.com",
+        hashed_password=get_password_hash("Password1234!"),
+        full_name="Lic. Roberto Garza Treviño",
+        role=LegalRoles.SENIOR_LAWYER,
+        professional_license="87654321"
+    )
+    db_session.add(user_b)
+    db_session.commit()
+    db_session.refresh(user_b)
+
+    token_b = create_access_token({
+        "sub": str(user_b.id),
+        "email": user_b.email,
+        "tenant_id": str(tenant_b.id),
+        "tenant_slug": tenant_b.slug,
+        "role": user_b.role
+    })
+
+    return {
+        "tenant": tenant_b,
+        "user": user_b,
+        "headers": {"Authorization": f"Bearer {token_b}"}
+    }

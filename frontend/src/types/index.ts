@@ -163,3 +163,78 @@ export interface AIAnalysisRecord {
   latency_ms: number;
   created_at: string;
 }
+
+export interface RuleScope {
+  doc_types?: string[];
+  client_ids?: string[];
+  legal_matters?: string[];
+  jurisdictions?: string[];
+}
+
+export interface RuleCondition {
+  operator: string;
+  parameters: {
+    keywords?: string[];
+    prohibited_keywords?: string[];
+    regex_pattern?: string;
+    expected_match?: boolean;
+    min_value?: number;
+    max_value?: number;
+    target_field?: string;
+    regex_extractor?: string;
+    case_sensitive?: boolean;
+    [key: string]: any;
+  };
+}
+
+export interface LegalRule {
+  id: string;
+  tenant_id: string;
+  rule_code: string;
+  name: string;
+  description: string;
+  category: string;
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
+  is_active: boolean;
+  scope: RuleScope;
+  condition_definition: RuleCondition;
+  expected_outcome: string;
+  legal_foundation?: string;
+  version: number;
+  effective_from: string;
+  effective_until?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RuleEvaluationDetail {
+  id: string;
+  evaluation_id: string;
+  rule_id?: string;
+  rule_code: string;
+  rule_name: string;
+  category: string;
+  severity: string;
+  status: "COMPLIANT" | "NON_COMPLIANT" | "PENDING_HUMAN_REVIEW" | "NOT_APPLICABLE";
+  matched_evidence?: string;
+  failure_reason?: string;
+  human_verification_notes?: string;
+  verified_by_id?: string;
+  verified_at?: string;
+}
+
+export interface RuleEvaluation {
+  id: string;
+  tenant_id: string;
+  document_id: string;
+  document_version_id?: string;
+  evaluated_by_id?: string;
+  total_rules_evaluated: number;
+  passed_count: number;
+  failed_count: number;
+  pending_count: number;
+  not_applicable_count: number;
+  compliance_score: number;
+  created_at: string;
+  details: RuleEvaluationDetail[];
+}

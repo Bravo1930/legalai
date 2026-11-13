@@ -35,6 +35,7 @@ import {
   Lightbulb,
   AlertTriangle
 } from "lucide-react";
+import RulesEngineView from "@/components/RulesEngineView";
 
 const DOC_TYPES = [
   "CONTRATO", "CONVENIO", "DEMANDA", "CONTESTACION", 
@@ -58,7 +59,7 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<"documents" | "ai" | "tasks">("documents");
+  const [activeTab, setActiveTab] = useState<"documents" | "rules" | "ai" | "tasks">("documents");
 
   // Documentos
   const [documents, setDocuments] = useState<LegalDocument[]>([]);
@@ -289,6 +290,21 @@ export default function DashboardPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab("rules")}
+            className={`pb-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-all ${
+              activeTab === "rules"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Scale className="h-4 w-4 text-emerald-600" />
+            <span>Motor de Reglas Deterministas</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+              Criterio Objetivo
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("ai")}
             className={`pb-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-all ${
               activeTab === "ai"
@@ -481,6 +497,16 @@ export default function DashboardPage() {
                             <button
                               onClick={() => {
                                 setSelectedDocForAI(d.id);
+                                setActiveTab("rules");
+                              }}
+                              className="px-2.5 py-1 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded font-semibold text-[11px] inline-flex items-center space-x-1"
+                            >
+                              <Scale className="h-3.5 w-3.5 text-emerald-600" />
+                              <span>Reglas</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedDocForAI(d.id);
                                 setActiveTab("ai");
                               }}
                               className="px-2.5 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded font-semibold text-[11px] inline-flex items-center space-x-1"
@@ -504,6 +530,12 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+        ) : activeTab === "rules" ? (
+          <RulesEngineView
+            documents={documents}
+            initialSelectedDocId={selectedDocForAI || documents[0]?.id}
+            userRole={user?.role}
+          />
         ) : activeTab === "ai" ? (
           /* Pestaña de Agentes de IA */
           <div>

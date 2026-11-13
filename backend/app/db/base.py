@@ -9,6 +9,10 @@ from app.models.case import Case, LegalMatter, CaseStatus
 from app.models.document import Document, DocumentVersion, DocumentMetadata, DocumentClassification
 from app.models.approval import LegalApproval, ApprovalStatus
 from app.models.ai import AIAnalysis, AIAgentType
+from app.models.rule import (
+    LegalRule, RuleVersion, RuleAuditLog, RuleEvaluation, RuleEvaluationDetail,
+    RuleCategory, RuleSeverity, RuleOperator, RuleEvaluationStatus
+)
 
 __all__ = [
     "Base",
@@ -27,5 +31,14 @@ __all__ = [
     "LegalApproval",
     "ApprovalStatus",
     "AIAnalysis",
-    "AIAgentType"
+    "AIAgentType",
+    "LegalRule",
+    "RuleVersion",
+    "RuleAuditLog",
+    "RuleEvaluation",
+    "RuleEvaluationDetail",
+    "RuleCategory",
+    "RuleSeverity",
+    "RuleOperator",
+    "RuleEvaluationStatus"
 ]
