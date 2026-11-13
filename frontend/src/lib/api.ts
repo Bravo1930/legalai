@@ -1,4 +1,4 @@
-import { AuthTokens, SystemHealth, UserProfile, AsyncTask, LegalDocument, DocumentPreview, Case, Client } from "@/types";
+import { AuthTokens, SystemHealth, UserProfile, AsyncTask, LegalDocument, DocumentPreview, Case, Client, AIModelInfo, AIAnalysisRecord } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
@@ -146,6 +146,44 @@ class ApiClient {
       headers: { ...this.getAuthHeader() },
     });
     if (!res.ok) throw new Error("Error al listar clientes");
+    return res.json();
+  }
+
+  // Agentes de Inteligencia Artificial (Ollama Local)
+  async listAIModels(): Promise<AIModelInfo[]> {
+    const res = await fetch(`${API_BASE_URL}/ai/models`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar modelos de Ollama");
+    return res.json();
+  }
+
+  async analyzeDocument(documentId: string, agentType: string, model?: string, userPrompt?: string): Promise<AIAnalysisRecord> {
+    const res = await fetch(`${API_BASE_URL}/ai/analyze/${documentId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({
+        agent_type: agentType,
+        model: model || undefined,
+        user_prompt: userPrompt || undefined
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.error?.message || "Error al ejecutar agente de IA");
+    }
+    return data;
+  }
+
+  async listDocumentAnalyses(documentId: string): Promise<AIAnalysisRecord[]> {
+    const res = await fetch(`${API_BASE_URL}/ai/analyses/${documentId}`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar historial de análisis de IA");
     return res.json();
   }
 }

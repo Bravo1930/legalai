@@ -141,3 +141,25 @@ export interface DocumentPreview {
   raw_text: string;
   metadata?: DocumentMetadata;
 }
+
+export interface AIModelInfo {
+  name: string;
+  size_bytes: number;
+  parameter_size?: string;
+  quantization_level?: string;
+  capabilities: string[];
+  family?: string;
+}
+
+export interface AIAnalysisRecord {
+  id: string;
+  tenant_id: string;
+  document_id: string;
+  agent_type: string;
+  model_used: string;
+  structured_output: Record<string, any>;
+  tokens_prompt: number;
+  tokens_completion: number;
+  latency_ms: number;
+  created_at: string;
+}

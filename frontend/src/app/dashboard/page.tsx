@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { UserProfile, LegalDocument, DocumentPreview, AsyncTask } from "@/types";
+import { UserProfile, LegalDocument, DocumentPreview, AsyncTask, AIModelInfo, AIAnalysisRecord } from "@/types";
 import { 
   Scale, 
   Building, 
@@ -27,7 +27,13 @@ import {
   FileCheck,
   Calendar,
   DollarSign,
-  Briefcase
+  Briefcase,
+  Bot,
+  Sparkles,
+  Zap,
+  HelpCircle,
+  Lightbulb,
+  AlertTriangle
 } from "lucide-react";
 
 const DOC_TYPES = [
@@ -36,12 +42,23 @@ const DOC_TYPES = [
   "DOCUMENTO_CORPORATIVO", "ANEXO", "IDENTIFICACION", "OTRO"
 ];
 
+const AI_AGENTS = [
+  { id: "FULL_SUITE", name: "Suite Completa (Clasificación + Riesgos + Verificación)" },
+  { id: "CLASSIFIER", name: "Agente Clasificador Documental" },
+  { id: "EXTRACTOR", name: "Agente Extractor de Entidades & Hechos" },
+  { id: "CLAUSE_ANALYST", name: "Agente Analista de Cláusulas & Omisiones" },
+  { id: "RISK_DETECTOR", name: "Agente Detector de Riesgos Contractuales" },
+  { id: "RESEARCHER", name: "Agente Investigador Normativo (Leyes MX)" },
+  { id: "DRAFTER", name: "Agente Redactor de Cláusulas Equilibradas" },
+  { id: "VERIFIER", name: "Agente Verificador de Calidad & Episteme" },
+];
+
 export default function DashboardPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<"documents" | "tasks">("documents");
+  const [activeTab, setActiveTab] = useState<"documents" | "ai" | "tasks">("documents");
 
   // Documentos
   const [documents, setDocuments] = useState<LegalDocument[]>([]);
@@ -61,6 +78,16 @@ export default function DashboardPage() {
   const [previewDoc, setPreviewDoc] = useState<DocumentPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
+  // Módulo de IA (Ollama Local)
+  const [aiModels, setAiModels] = useState<AIModelInfo[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [selectedAgent, setSelectedAgent] = useState<string>("FULL_SUITE");
+  const [selectedDocForAI, setSelectedDocForAI] = useState<string>("");
+  const [customPrompt, setCustomPrompt] = useState<string>("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AIAnalysisRecord | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   // Tareas asíncronas
   const [tasks, setTasks] = useState<AsyncTask[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
@@ -74,6 +101,7 @@ export default function DashboardPage() {
     setUser(currentUser);
     loadDocuments();
     loadTasks();
+    loadAIModels();
   }, [router]);
 
   const loadDocuments = async () => {
@@ -81,6 +109,9 @@ export default function DashboardPage() {
     try {
       const res = await api.searchDocuments(searchQuery, selectedDocType || undefined);
       setDocuments(res.items);
+      if (res.items.length > 0 && !selectedDocForAI) {
+        setSelectedDocForAI(res.items[0].id);
+      }
     } catch (err: any) {
       console.error("Error al cargar documentos:", err);
     } finally {
@@ -97,6 +128,20 @@ export default function DashboardPage() {
       console.error("Error al cargar tareas:", err);
     } finally {
       setLoadingTasks(false);
+    }
+  };
+
+  const loadAIModels = async () => {
+    try {
+      const models = await api.listAIModels();
+      setAiModels(models);
+      if (models.length > 0) {
+        // Seleccionar por defecto qwen3.5 o qwen2.5 si existe
+        const defaultM = models.find(m => m.name.includes("qwen3.5") || m.name.includes("qwen2.5-coder:7b")) || models[0];
+        setSelectedModel(defaultM.name);
+      }
+    } catch (err) {
+      console.error("Error al cargar modelos de Ollama:", err);
     }
   };
 
@@ -120,10 +165,32 @@ export default function DashboardPage() {
       setUploadTitle("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       await loadDocuments();
+      setSelectedDocForAI(newDoc.id);
     } catch (err: any) {
       setUploadError(err?.message || "Error al cargar documento");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleRunAIAnalysis = async () => {
+    if (!selectedDocForAI) return;
+    setAnalyzing(true);
+    setAiError(null);
+    setAnalysisResult(null);
+
+    try {
+      const result = await api.analyzeDocument(
+        selectedDocForAI,
+        selectedAgent,
+        selectedModel || undefined,
+        customPrompt || undefined
+      );
+      setAnalysisResult(result);
+    } catch (err: any) {
+      setAiError(err?.message || "Error durante la inferencia en Ollama");
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -177,7 +244,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <span className="text-lg font-bold tracking-tight">LegalAI México</span>
-              <span className="text-xs text-slate-400 block font-mono">Bóveda Jurídica Inmutable</span>
+              <span className="text-xs text-slate-400 block font-mono">Motor de IA Local & Bóveda Inmutable</span>
             </div>
           </div>
 
@@ -222,6 +289,21 @@ export default function DashboardPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab("ai")}
+            className={`pb-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-all ${
+              activeTab === "ai"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Bot className="h-4 w-4 text-indigo-600" />
+            <span>Agentes de IA (Ollama Local)</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
+              GPU NVIDIA 6GB
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("tasks")}
             className={`pb-3 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-all ${
               activeTab === "tasks"
@@ -230,7 +312,7 @@ export default function DashboardPage() {
             }`}
           >
             <Cpu className="h-4 w-4" />
-            <span>Cola de Procesamiento & OCR</span>
+            <span>Cola Asíncrona</span>
             <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-700">{tasks.length}</span>
           </button>
         </div>
@@ -397,6 +479,16 @@ export default function DashboardPage() {
                               <span>Vista Previa</span>
                             </button>
                             <button
+                              onClick={() => {
+                                setSelectedDocForAI(d.id);
+                                setActiveTab("ai");
+                              }}
+                              className="px-2.5 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded font-semibold text-[11px] inline-flex items-center space-x-1"
+                            >
+                              <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                              <span>Analizar con IA</span>
+                            </button>
+                            <button
                               onClick={() => handleDownload(d.id, d.filename)}
                               className="px-2.5 py-1 text-slate-900 bg-amber-400 hover:bg-amber-300 rounded font-semibold text-[11px] inline-flex items-center space-x-1"
                             >
@@ -411,6 +503,213 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          </div>
+        ) : activeTab === "ai" ? (
+          /* Pestaña de Agentes de IA */
+          <div>
+            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm mb-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-200 mb-6 gap-4">
+                <div>
+                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 mb-1">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Inferencia Soberana 100% Local • Zero Data Exfiltration</span>
+                  </span>
+                  <h2 className="text-xl font-bold text-slate-900">Agentes de IA Especializados (Ollama)</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Análisis contractual, detección de riesgos y auditoría epistémica ejecutada en tu GPU local.
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2 text-xs text-slate-500">
+                  <Cpu className="h-4 w-4 text-emerald-600" />
+                  <span>Modelos en GPU: <strong>{aiModels.length} detectados</strong></span>
+                </div>
+              </div>
+
+              {aiError && (
+                <div className="mb-6 p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start space-x-2">
+                  <AlertCircle className="h-5 w-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Error durante el análisis:</span>
+                    <p className="mt-0.5">{aiError}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Controles de Configuración del Agente */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Documento a Analizar</label>
+                  <select
+                    value={selectedDocForAI}
+                    onChange={(e) => setSelectedDocForAI(e.target.value)}
+                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white"
+                  >
+                    {documents.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.title} ({d.doc_type})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Agente Especializado</label>
+                  <select
+                    value={selectedAgent}
+                    onChange={(e) => setSelectedAgent(e.target.value)}
+                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white font-medium"
+                  >
+                    {AI_AGENTS.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Modelo Ollama Local</label>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white font-mono"
+                  >
+                    {aiModels.map((m) => (
+                      <option key={m.name} value={m.name}>
+                        {m.name} ({m.parameter_size || (m.size_bytes / (1024*1024*1024)).toFixed(1) + " GB"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Instrucción Adicional u Objetivo Específico (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder="Ej. Enfatizar revisión de cláusulas de pena convencional y vigencia de poderes..."
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleRunAIAnalysis}
+                  disabled={analyzing || !selectedDocForAI}
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-md transition-all flex items-center space-x-2 disabled:opacity-50"
+                >
+                  <Sparkles className={`h-4 w-4 ${analyzing ? "animate-spin" : ""}`} />
+                  <span>{analyzing ? "Inferencia en progreso (Ollama GPU)..." : "Ejecutar Análisis Jurídico"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Resultados del Análisis con Distinción Epistémica */}
+            {analysisResult && (
+              <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 mb-6 gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-amber-400 font-mono uppercase mr-2">
+                      {analysisResult.agent_type}
+                    </span>
+                    <span className="text-xs text-slate-500 font-mono">
+                      Modelo: <strong>{analysisResult.model_used}</strong>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-4 text-xs font-mono text-slate-600">
+                    <span className="flex items-center space-x-1">
+                      <Clock className="h-3.5 w-3.5 text-slate-400" />
+                      <span>{analysisResult.latency_ms} ms</span>
+                    </span>
+                    <span>Tokens In: {analysisResult.tokens_prompt}</span>
+                    <span>Tokens Out: {analysisResult.tokens_completion}</span>
+                  </div>
+                </div>
+
+                {/* Grid Epistémico */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Hechos Extraídos (Facts) */}
+                  <div className="border border-emerald-200 rounded-xl p-4 bg-emerald-50/40">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center space-x-1.5 mb-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <span>Hechos Verificables 1:1 en el Documento (Facts)</span>
+                    </h3>
+                    <ul className="text-xs text-slate-800 space-y-1.5 list-disc pl-4">
+                      {analysisResult.structured_output.facts && analysisResult.structured_output.facts.length > 0 ? (
+                        analysisResult.structured_output.facts.map((f: string, i: number) => (
+                          <li key={i}>{f}</li>
+                        ))
+                      ) : (
+                        <li className="text-slate-500 italic">No se declararon hechos aislados.</li>
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* Inferencias Lógicas */}
+                  <div className="border border-blue-200 rounded-xl p-4 bg-blue-50/40">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-blue-800 flex items-center space-x-1.5 mb-2">
+                      <Lightbulb className="h-4 w-4 text-blue-600" />
+                      <span>Inferencias Jurídicas Razonadas</span>
+                    </h3>
+                    <ul className="text-xs text-slate-800 space-y-1.5 list-disc pl-4">
+                      {analysisResult.structured_output.inferences && analysisResult.structured_output.inferences.length > 0 ? (
+                        analysisResult.structured_output.inferences.map((inf: string, i: number) => (
+                          <li key={i}>{inf}</li>
+                        ))
+                      ) : (
+                        <li className="text-slate-500 italic">No se emitieron inferencias.</li>
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* Hipótesis Procesales */}
+                  <div className="border border-amber-200 rounded-xl p-4 bg-amber-50/40">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center space-x-1.5 mb-2">
+                      <HelpCircle className="h-4 w-4 text-amber-600" />
+                      <span>Hipótesis & Escenarios de Controversia</span>
+                    </h3>
+                    <ul className="text-xs text-slate-800 space-y-1.5 list-disc pl-4">
+                      {analysisResult.structured_output.hypotheses && analysisResult.structured_output.hypotheses.length > 0 ? (
+                        analysisResult.structured_output.hypotheses.map((h: string, i: number) => (
+                          <li key={i}>{h}</li>
+                        ))
+                      ) : (
+                        <li className="text-slate-500 italic">Sin hipótesis contingentes.</li>
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* Recomendaciones */}
+                  <div className="border border-purple-200 rounded-xl p-4 bg-purple-50/40">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-purple-900 flex items-center space-x-1.5 mb-2">
+                      <Sparkles className="h-4 w-4 text-purple-600" />
+                      <span>Recomendaciones Estratégicas (No Vinculantes)</span>
+                    </h3>
+                    <ul className="text-xs text-slate-800 space-y-1.5 list-disc pl-4">
+                      {analysisResult.structured_output.recommendations && analysisResult.structured_output.recommendations.length > 0 ? (
+                        analysisResult.structured_output.recommendations.map((r: string, i: number) => (
+                          <li key={i}>{r}</li>
+                        ))
+                      ) : (
+                        <li className="text-slate-500 italic">Sin recomendaciones adicionales.</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Bloque de Salida Estructurada Completa en JSON */}
+                <div className="mt-6 pt-4 border-t border-slate-200">
+                  <span className="text-xs font-bold text-slate-700 block mb-2">JSON Estructurado Validado:</span>
+                  <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-mono overflow-x-auto max-h-60 leading-relaxed">
+                    {JSON.stringify(analysisResult.structured_output, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* Tasks View */
