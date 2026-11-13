@@ -1,0 +1,50 @@
+# Entornos Virtuales Python
+.venv/
+env/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node.js & Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Secretos y Entornos (NUNCA comitear secretos)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+
+# Almacenamiento Local de Documentos
+storage/tenants/
+storage/temp/
+uploads/
+
+# Logs del Sistema
+logs/
+*.log
+
+# IDEs y Editores
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

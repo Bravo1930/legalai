@@ -1,0 +1,117 @@
+services:
+  # Base de Datos PostgreSQL 16 con extensión pgvector oficial
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: legal_ai_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-legal_ai_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-legal_ai_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - legal_network
+
+  # Broker de Mensajería y Caché Redis
+  redis:
+    image: redis:7-alpine
+    container_name: legal_ai_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - legal_network
+
+  # Backend FastAPI (Python 3.11)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: legal_ai_backend
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-legal_ai_db}
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - SECRET_KEY=${SECRET_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - legal_network
+
+  # Trabajador Asíncrono para OCR y Embeddings
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: legal_ai_worker
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.worker"]
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-legal_ai_db}
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./storage:/app/storage
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - legal_network
+
+  # Frontend Next.js con TypeScript
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: legal_ai_frontend
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - legal_network
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+
+networks:
+  legal_network:
+    driver: bridge
