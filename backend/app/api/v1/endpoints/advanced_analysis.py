@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.user import User
-from app.models.advanced_analysis import LegalFinding
+from app.models.advanced_analysis import LegalFinding, AdvancedAnalysisSession
 from app.schemas.advanced_analysis import (
     AdvancedAnalysisSessionResponse,
     LegalFindingResponse,
@@ -37,6 +37,21 @@ def list_findings(
     if review_status:
         query = query.filter(LegalFinding.review_status == review_status.upper())
     return query.order_by(LegalFinding.created_at.desc()).offset(skip).limit(limit).all()
+
+
+@router.get("/sessions", response_model=List[AdvancedAnalysisSessionResponse], summary="Listar todas las sesiones ejecutadas de auditoría jurídica")
+def list_analysis_sessions(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retorna las sesiones de auditoría jurídica avanzada ejecutadas en el despacho."""
+    if current_user.role == "SUPER_ADMIN":
+        return []
+    return db.query(AdvancedAnalysisSession).filter(
+        AdvancedAnalysisSession.tenant_id == current_user.tenant_id
+    ).order_by(AdvancedAnalysisSession.created_at.desc()).offset(skip).limit(limit).all()
 
 
 @router.post("/analyze/{document_id}", response_model=AdvancedAnalysisSessionResponse, status_code=status.HTTP_201_CREATED, summary="Ejecutar análisis jurídico documental integral")

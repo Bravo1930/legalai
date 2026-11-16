@@ -32,6 +32,8 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [showSyncSuccess, setShowSyncSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     loadAnalytics();
@@ -43,6 +45,10 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
     try {
       const data = await api.getDashboardAnalytics();
       setAnalytics(data);
+      const timeStr = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setLastSyncTime(timeStr);
+      setShowSyncSuccess(true);
+      setTimeout(() => setShowSyncSuccess(false), 4000);
     } catch (err: any) {
       setErrorMsg(err.message || "Error al cargar analítica de la plataforma");
     } finally {
@@ -53,45 +59,56 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-900 rounded-2xl p-4 sm:p-6 text-white shadow-[0_8px_30px_-4px_rgba(15,23,42,0.15)] border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <div className="flex items-center space-x-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-900">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-900 shadow-xs">
               Despacho Jurídico
             </span>
             <span className="text-xs text-slate-300 font-medium">{tenantName || "Bufete de Abogados"}</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Tablero de Control Jurídico</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Tablero de Control Jurídico</h1>
           <p className="text-xs text-slate-300 mt-1">
             Supervisión ejecutiva de expedientes, revisión documental con IA soberana y gobernanza procesal.
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+          {showSyncSuccess && lastSyncTime && (
+            <div className="flex items-center space-x-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-3 py-1.5 rounded-xl text-[11px] font-mono animate-fade-in shadow-xs">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+              <span>Sincronizado a las {lastSyncTime}</span>
+            </div>
+          )}
+          {!showSyncSuccess && lastSyncTime && (
+            <span className="text-[10px] text-slate-400 font-mono hidden md:inline-block">
+              Última sincronización: {lastSyncTime}
+            </span>
+          )}
           <button
             onClick={loadAnalytics}
             disabled={loading}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+            className="apple-interactive px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-xs shrink-0"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-amber-400" : ""}`} />
-            <span>Actualizar Métricas</span>
+            <span>{loading ? "Sincronizando..." : "Actualizar Métricas"}</span>
           </button>
         </div>
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start space-x-2">
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start space-x-2">
           <AlertTriangle className="h-4 w-4 text-rose-600 flex-shrink-0 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {/* Documentos Recibidos */}
         <div
           onClick={() => onNavigate("documents")}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 cursor-pointer transition-all"
+          className="apple-interactive bg-white/95 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/80 shadow-[0_2px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.08)] cursor-pointer transition-all hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-[11px] font-semibold">Recibidos</span>
@@ -106,7 +123,7 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
         {/* Documentos Procesados */}
         <div
           onClick={() => onNavigate("documents")}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 cursor-pointer transition-all"
+          className="apple-interactive bg-white/95 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/80 shadow-[0_2px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.08)] cursor-pointer transition-all hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-[11px] font-semibold">Procesados</span>
@@ -121,7 +138,7 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
         {/* Revisiones Pendientes */}
         <div
           onClick={() => onNavigate("workflow")}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 cursor-pointer transition-all"
+          className="apple-interactive bg-white/95 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/80 shadow-[0_2px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.08)] cursor-pointer transition-all hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-[11px] font-semibold">Pend. Revisión</span>
@@ -136,7 +153,7 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
         {/* Riesgos Críticos */}
         <div
           onClick={() => onNavigate("risks")}
-          className="bg-white p-4 rounded-xl border border-rose-200 shadow-xs hover:border-rose-300 bg-rose-50/20 cursor-pointer transition-all"
+          className="apple-interactive bg-white/95 backdrop-blur-sm p-4 rounded-2xl border border-rose-200/80 shadow-[0_2px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.08)] bg-rose-50/20 cursor-pointer transition-all hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between text-rose-700 mb-2">
             <span className="text-[11px] font-bold">Riesgos Críticos</span>
@@ -151,7 +168,7 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
         {/* Aprobados */}
         <div
           onClick={() => onNavigate("approvals")}
-          className="bg-white p-4 rounded-xl border border-emerald-200 shadow-xs hover:border-emerald-300 bg-emerald-50/20 cursor-pointer transition-all"
+          className="apple-interactive bg-white/95 backdrop-blur-sm p-4 rounded-2xl border border-emerald-200/80 shadow-[0_2px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.08)] bg-emerald-50/20 cursor-pointer transition-all hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between text-emerald-700 mb-2">
             <span className="text-[11px] font-bold">Aprobados</span>
@@ -166,7 +183,7 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
         {/* Rechazados */}
         <div
           onClick={() => onNavigate("workflow")}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 cursor-pointer transition-all"
+          className="apple-interactive bg-white/95 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/80 shadow-[0_2px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.08)] cursor-pointer transition-all hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-[11px] font-semibold">Rechazados</span>
@@ -180,9 +197,9 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
       </div>
 
       {/* Second Row: Performance Metrics & Operational Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Carga de Trabajo por Abogado */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+        <div className="lg:col-span-2 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
             <div className="flex items-center space-x-2">
               <UserCheck className="h-4 w-4 text-amber-500" />
@@ -231,7 +248,7 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
         </div>
 
         {/* SLA & Estadísticas de Despacho */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
           <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
               <TrendingUp className="h-4 w-4 text-emerald-600" />
@@ -284,7 +301,7 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
       </div>
 
       {/* Third Row: Recent Activity Feed */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-xs">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
           <div className="flex items-center space-x-2">
             <Clock className="h-4 w-4 text-slate-700" />
@@ -307,7 +324,7 @@ export default function DashboardView({ onNavigate, userRole, tenantName }: Dash
             {analytics.recent_activity.map((act) => (
               <div
                 key={act.id}
-                className="p-3 bg-slate-50/70 border border-slate-100 rounded-lg text-xs flex items-center justify-between gap-3"
+                className="p-3 bg-slate-50/70 border border-slate-100 rounded-lg text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3"
               >
                 <div className="flex items-center space-x-2.5">
                   <div className="p-1.5 rounded-full bg-slate-200 text-slate-700 flex-shrink-0">

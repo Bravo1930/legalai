@@ -5,9 +5,10 @@ from datetime import datetime, timezone, timedelta
 from app.models.workflow import WorkflowState, ApprovalScope, WorkflowApprovalRecord
 
 
-@pytest.fixture
-def workflow_doc_id(client, lawyer_headers):
-    """Sube un documento de prueba y retorna su ID."""
+@pytest.fixture(scope="module")
+def workflow_doc_id(client, lawyer_headers, db_session):
+    """Sube un documento de prueba y retorna su ID, limpiándolo al concluir el módulo."""
+    from app.models.document import Document
     contract_text = (
         "CONTRATO DE PRESTACIÓN DE SERVICIOS JURÍDICOS Y CORPORATIVOS.\n"
         "PRIMERA.- OBJETO. El prestador brindará asesoría legal integral en la Ciudad de México.\n"
@@ -17,11 +18,19 @@ def workflow_doc_id(client, lawyer_headers):
     res = client.post(
         "/api/v1/documents/upload",
         files=files,
-        data={"title": "Contrato para Flujo de Trabajo", "doc_type": "CONTRATO"},
+        data={"title": "Contrato para Flujo de Trabajo (Prueba)", "doc_type": "CONTRATO"},
         headers=lawyer_headers
     )
     assert res.status_code == 200
-    return res.json()["id"]
+    doc_id = res.json()["id"]
+    yield doc_id
+    try:
+        doc = db_session.query(Document).filter(Document.id == doc_id).first()
+        if doc:
+            db_session.delete(doc)
+            db_session.commit()
+    except Exception:
+        db_session.rollback()
 
 
 def test_get_or_create_workflow_lifecycle(client, lawyer_headers, workflow_doc_id):
@@ -300,36 +309,40 @@ def test_assistant_approval_restrictions(db_session, workflow_doc_id):
     db_session.add(assistant_user)
     db_session.commit()
 
-    service = WorkflowService(db_session)
-    wf = service.get_or_create_workflow(
-        tenant_id=UUID("938678d9-ba23-4927-8a32-0ba461db4493"),
-        user=User(role="ASSOCIATE_LAWYER", tenant_id=UUID("938678d9-ba23-4927-8a32-0ba461db4493")),
-        document_id=UUID(workflow_doc_id)
-    )
+    try:
+        service = WorkflowService(db_session)
+        wf = service.get_or_create_workflow(
+            tenant_id=UUID("938678d9-ba23-4927-8a32-0ba461db4493"),
+            user=User(role="ASSOCIATE_LAWYER", tenant_id=UUID("938678d9-ba23-4927-8a32-0ba461db4493")),
+            document_id=UUID(workflow_doc_id)
+        )
 
-    # 1. Con allow_assistant_approval=False, debe fallar con ForbiddenException
-    wf.allow_assistant_approval = False
-    approval_srv = ApprovalService(db_session)
-    with pytest.raises(ForbiddenException) as exc_info:
-        approval_srv.submit_approval(
+        # 1. Con allow_assistant_approval=False, debe fallar con ForbiddenException
+        wf.allow_assistant_approval = False
+        approval_srv = ApprovalService(db_session)
+        with pytest.raises(ForbiddenException) as exc_info:
+            approval_srv.submit_approval(
+                workflow=wf,
+                user=assistant_user,
+                scope=ApprovalScope.DEFINITIVE_APPROVAL,
+                reviewer_license="CED-PASANTE-123"
+            )
+        assert "asistentes jurídicos no están facultados" in str(exc_info.value)
+
+        # 2. Con política allow_assistant_approval=True, se permite
+        wf.allow_assistant_approval = True
+        app_record = approval_srv.submit_approval(
             workflow=wf,
             user=assistant_user,
             scope=ApprovalScope.DEFINITIVE_APPROVAL,
-            reviewer_license="CED-PASANTE-123"
+            reviewer_license="CED-PASANTE-123",
+            notes="Aprobado por asistente bajo delegación expresa"
         )
-    assert "asistentes jurídicos no están facultados" in str(exc_info.value)
-
-    # 2. Con política allow_assistant_approval=True, se permite
-    wf.allow_assistant_approval = True
-    app_record = approval_srv.submit_approval(
-        workflow=wf,
-        user=assistant_user,
-        scope=ApprovalScope.DEFINITIVE_APPROVAL,
-        reviewer_license="CED-PASANTE-123",
-        notes="Aprobado por asistente bajo delegación expresa"
-    )
-    assert app_record.status == "VALID"
-    assert app_record.reviewer_license == "CED-PASANTE-123"
+        assert app_record.status == "VALID"
+        assert app_record.reviewer_license == "CED-PASANTE-123"
+    finally:
+        db_session.delete(assistant_user)
+        db_session.commit()
 
 
 def test_notifications_system(client, lawyer_headers):

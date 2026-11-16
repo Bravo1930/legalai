@@ -1,5 +1,5 @@
 # MATRIZ DE PRUEBAS Y CERTIFICACIÓN TÉCNICA
-## Plataforma Jurídica LegalAI México — Control de Calidad Pre-Producción
+## Plataforma Jurídica LegalAI México: Control de Calidad Pre-Producción
 
 ---
 

@@ -54,3 +54,19 @@ def list_tasks(
         skip=skip,
         limit=limit
     )
+
+
+@router.post("/{task_id}/retry", response_model=TaskResponse, summary="Reintentar tarea fallida o atorada")
+def retry_task(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Reintenta una tarea asíncrona devolviéndola al estado PENDING para ser procesada por el worker."""
+    task = TaskService.get_task(db=db, task_id=task_id, tenant_id=current_user.tenant_id)
+    task.status = "PENDING"
+    task.error_message = None
+    task.completed_at = None
+    db.commit()
+    db.refresh(task)
+    return task

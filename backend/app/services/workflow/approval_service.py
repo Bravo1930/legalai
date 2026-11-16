@@ -44,7 +44,7 @@ class ApprovalService:
 
         # 3. Regla: Para aprobación definitiva, se requiere abogado facultado y cédula profesional
         if scope == ApprovalScope.DEFINITIVE_APPROVAL:
-            authorized_roles = ["MANAGING_PARTNER", "SENIOR_LAWYER", "ASSOCIATE_LAWYER"]
+            authorized_roles = ["MANAGING_PARTNER", "ADMIN", "SENIOR_LAWYER", "LAWYER", "ASSOCIATE_LAWYER"]
             if user.role not in authorized_roles and not workflow.allow_assistant_approval:
                 raise ForbiddenException(
                     f"El rol '{user.role}' no cuenta con facultades para emitir aprobaciones definitivas."
@@ -85,13 +85,14 @@ class ApprovalService:
             workflow.current_state = WorkflowState.APPROVED
             workflow.updated_at = datetime.now(timezone.utc)
 
+            name_display = user.full_name if any(user.full_name.startswith(p) for p in ["Lic.", "Dr.", "Dra.", "Ing."]) else f"Lic. {user.full_name}"
             transition = WorkflowTransition(
                 workflow_id=workflow.id,
                 from_state=from_state,
                 to_state=WorkflowState.APPROVED,
                 triggered_by_id=user.id,
                 trigger_type="USER_ACTION",
-                reason=f"Aprobación definitiva otorgada por Lic. {user.full_name} (Cédula: {effective_license}) sobre v{current_version_number}",
+                reason=f"Aprobación definitiva otorgada por {name_display} (Cédula: {effective_license}) sobre v{current_version_number}",
                 transition_metadata={
                     "scope": scope,
                     "version_number": current_version_number,
@@ -102,9 +103,10 @@ class ApprovalService:
             self.db.add(transition)
 
         self.db.flush()
+        name_display = user.full_name if any(user.full_name.startswith(p) for p in ["Lic.", "Dr.", "Dra.", "Ing."]) else f"Lic. {user.full_name}"
         logger.info(
             f"[ApprovalService] Aprobación {scope} registrada para Doc:{doc.id} v{current_version_number} "
-            f"por Lic. {user.full_name} ({effective_license})"
+            f"por {name_display} ({effective_license})"
         )
 
         return approval

@@ -41,7 +41,7 @@ export default function SettingsView({ user }: SettingsViewProps) {
   const [webhookUrl, setWebhookUrl] = useState("https://api.despacho.com.mx/webhooks/legal-ai");
   const [webhookSecret, setWebhookSecret] = useState("sec_hmac_948fbc204812ae93108df");
 
-  const canEdit = user.role === "SUPER_ADMIN" || user.role === "MANAGING_PARTNER";
+  const canEdit = user.role === "SUPER_ADMIN" || user.role === "MANAGING_PARTNER" || user.role === "ADMIN";
 
   useEffect(() => {
     loadTenantData();
@@ -97,6 +97,20 @@ export default function SettingsView({ user }: SettingsViewProps) {
           Parámetros de identidad legal, políticas de delegación, integración de webhooks y seguridad de la firma.
         </p>
       </div>
+
+      {!canEdit && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start space-x-3 shadow-xs">
+          <Lock className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-bold text-amber-950 block text-[13px] mb-0.5">
+              Modo Solo Lectura - Control de Gobernanza RBAC
+            </span>
+            <p className="text-amber-800 leading-relaxed">
+              Su rol actual de <strong>{user.role}</strong> le otorga permisos de consulta y auditoría técnica. La modificación de razón social, RFC fiscal, llaves criptográficas y webhooks está reservada por seguridad corporativa para el <strong>Socio Administrador (ADMIN / MANAGING_PARTNER)</strong>.
+            </p>
+          </div>
+        </div>
+      )}
 
       {successMsg && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center space-x-2">

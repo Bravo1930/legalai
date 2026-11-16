@@ -101,9 +101,9 @@ export default function ApprovalsView({ documents, userRole }: ApprovalsViewProp
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono mb-1">
+          <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-mono mb-1 shadow-xs">
             <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
             <span>Gobernanza HITL & Fe Pública Jurídica</span>
           </span>
@@ -116,7 +116,7 @@ export default function ApprovalsView({ documents, userRole }: ApprovalsViewProp
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setShowModal(true)}
-            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5 flex-shrink-0"
+            className="apple-interactive px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5 flex-shrink-0"
           >
             <UserCheck className="h-4 w-4 text-amber-400" />
             <span>Emitir Aprobación</span>
@@ -125,7 +125,7 @@ export default function ApprovalsView({ documents, userRole }: ApprovalsViewProp
       </div>
 
       {/* Info Card on Legal Rules */}
-      <div className="bg-amber-50/50 border border-amber-200 rounded-xl p-4 flex items-start space-x-3 text-xs text-amber-950">
+      <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4.5 flex items-start space-x-3 text-xs text-amber-950 shadow-xs">
         <Scale className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
         <div>
           <span className="font-bold text-amber-900 block">Reglas Deontológicas de Aprobación Documental:</span>
@@ -138,7 +138,7 @@ export default function ApprovalsView({ documents, userRole }: ApprovalsViewProp
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-center">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col sm:flex-row gap-4 justify-between items-center">
         <div className="relative w-full sm:w-96">
           <Search className="h-4 w-4 absolute left-3 top-2.5 text-slate-400" />
           <input

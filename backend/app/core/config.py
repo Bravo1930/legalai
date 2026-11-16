@@ -65,7 +65,16 @@ class Settings(BaseSettings):
     STORAGE_WORM_ENABLED: bool = True
 
     # CORS
-    CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000"]
+    CORS_ORIGINS: Union[List[str], str] = [
+        "http://localhost:3005",
+        "http://127.0.0.1:3005",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -74,7 +83,19 @@ class Settings(BaseSettings):
             return [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, list):
             return v
-        return ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000"]
+        return [
+            "http://localhost:3005",
+            "http://127.0.0.1:3005",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000"
+        ]
+
+    # Datos de Demostración
+    SEED_DEMO: bool = True
 
     # Logging
     LOG_LEVEL: str = "INFO"

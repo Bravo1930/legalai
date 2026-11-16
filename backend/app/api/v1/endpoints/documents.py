@@ -91,6 +91,7 @@ def search_documents(
         db=db,
         tenant_id=current_user.tenant_id,
         user_role=current_user.role,
+        user_id=current_user.id,
         query=query,
         case_id=case_id,
         client_id=client_id,
@@ -112,7 +113,8 @@ def get_document(
         db=db,
         document_id=document_id,
         tenant_id=current_user.tenant_id,
-        user_role=current_user.role
+        user_role=current_user.role,
+        user_id=current_user.id
     )
 
 
@@ -127,7 +129,8 @@ def preview_document(
         db=db,
         document_id=document_id,
         tenant_id=current_user.tenant_id,
-        user_role=current_user.role
+        user_role=current_user.role,
+        user_id=current_user.id
     )
 
     raw_text = doc.metadata_record.raw_text if doc.metadata_record else "No hay texto extraído disponible."
@@ -156,7 +159,8 @@ def download_document(
         db=db,
         document_id=document_id,
         tenant_id=current_user.tenant_id,
-        user_role=current_user.role
+        user_role=current_user.role,
+        user_id=current_user.id
     )
 
     file_path = doc.storage_path

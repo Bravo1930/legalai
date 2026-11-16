@@ -340,7 +340,7 @@ export default function ModificationsView({
             >
               {documents.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.title} ({d.doc_type}) — Versión {d.versions?.length ? d.versions[d.versions.length - 1].version_number : 1}
+                  {d.title} ({d.doc_type}), Versión {d.versions?.length ? d.versions[d.versions.length - 1].version_number : 1}
                 </option>
               ))}
             </select>
@@ -379,7 +379,7 @@ export default function ModificationsView({
               >
                 {batches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.title} ({b.objective}) — {b.total_proposals} propuestas [{b.status}]
+                    {b.title} ({b.objective}), {b.total_proposals} propuestas [{b.status}]
                   </option>
                 ))}
               </select>
@@ -550,12 +550,12 @@ export default function ModificationsView({
                         }`}
                       >
                         {proposal.status === "ACCEPTED"
-                          ? "✓ ACEPTADA"
+                          ? "Aprobada"
                           : proposal.status === "MODIFIED_BY_LAWYER"
-                          ? "✎ AJUSTADA POR ABOGADO"
+                          ? "Ajustada por abogado"
                           : proposal.status === "REJECTED"
-                          ? "✕ RECHAZADA"
-                          : "⏳ PENDIENTE DE REVISIÓN"}
+                          ? "Rechazada"
+                          : "Pendiente de revisión"}
                       </span>
 
                       {/* Quick Action Buttons */}

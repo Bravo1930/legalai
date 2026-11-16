@@ -258,7 +258,7 @@ class AdvancedAnalysisEngine:
         reviewer_notes: Optional[str] = None
     ) -> LegalFinding:
         """Permite que un abogado humano valide, modifique o descarte un hallazgo (HITL)."""
-        if lawyer_user.role not in [LegalRoles.SENIOR_LAWYER, LegalRoles.MANAGING_PARTNER, LegalRoles.ASSOCIATE_LAWYER]:
+        if lawyer_user.role not in [LegalRoles.SENIOR_LAWYER, LegalRoles.LAWYER, LegalRoles.MANAGING_PARTNER, LegalRoles.ADMIN, LegalRoles.ASSOCIATE_LAWYER]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Solo un abogado facultado puede emitir dictamen sobre hallazgos jurídicos."

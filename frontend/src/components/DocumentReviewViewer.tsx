@@ -234,9 +234,9 @@ export default function DocumentReviewViewer({
         /* Split Screen Container */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Full Document Text (7 cols) */}
-          <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-[750px] overflow-hidden">
+          <div className="lg:col-span-7 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-[0_4px_24px_-2px_rgba(15,23,42,0.04)] flex flex-col h-[750px] overflow-hidden">
             {/* Header */}
-            <div className="p-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div className="p-3.5 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <FileText className="h-4 w-4 text-slate-600" />
                 <span className="text-xs font-bold text-slate-800">
@@ -273,7 +273,7 @@ export default function DocumentReviewViewer({
           {/* Right Column: Findings & Legal Dossier (5 cols) */}
           <div className="lg:col-span-5 flex flex-col gap-4 h-[750px]">
             {/* Observations List & Filter */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col max-h-[340px]">
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.03)] p-4 flex flex-col max-h-[340px]">
               <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
                 <div className="flex items-center space-x-2">
                   <ShieldAlert className="h-4 w-4 text-rose-600" />
@@ -310,10 +310,10 @@ export default function DocumentReviewViewer({
                     <div
                       key={f.id}
                       onClick={() => handleSelectFinding(f)}
-                      className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-all ${
+                      className={`apple-interactive p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
                         activeFinding?.id === f.id
-                          ? "border-amber-400 bg-amber-50/70 shadow-xs ring-1 ring-amber-400"
-                          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                          ? "border-amber-400 bg-amber-50/80 shadow-xs ring-1 ring-amber-400/50"
+                          : "border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/80"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
@@ -355,7 +355,7 @@ export default function DocumentReviewViewer({
 
             {/* Active Finding Dossier Detail & Lawyer Actions */}
             {activeFinding ? (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex-1 overflow-y-auto flex flex-col justify-between">
+              <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-[0_4px_24px_-2px_rgba(15,23,42,0.04)] p-4 flex-1 overflow-y-auto flex flex-col justify-between">
                 <div className="space-y-3">
                   {/* Title & Metadata */}
                   <div className="border-b border-slate-100 pb-2">
@@ -393,7 +393,7 @@ export default function DocumentReviewViewer({
                       <div className="text-[10px] text-emerald-700 mt-1 flex items-center justify-between font-mono">
                         <span>Fuente: {activeFinding.legal_foundation.official_source}</span>
                         <span className="font-bold">
-                          {activeFinding.legal_foundation.validity_status === "VIGENTE_VERIFICADA" ? "✓ Vigente" : "Requiere Validación"}
+                          {activeFinding.legal_foundation.validity_status === "VIGENTE_VERIFICADA" ? "Vigente verificada" : "Requiere validación"}
                         </span>
                       </div>
                     </div>

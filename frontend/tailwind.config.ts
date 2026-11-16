@@ -8,6 +8,14 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        serif: ["'EB Garamond'", "Georgia", "serif"],
+        sans: ["'Lato'", "system-ui", "sans-serif"],
+      },
+      transitionTimingFunction: {
+        'apple-spring': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'apple-press': 'cubic-bezier(0.2, 0, 0, 1)',
+      },
       colors: {
         legal: {
           50: "#f8f9fa",

@@ -118,9 +118,9 @@ export default function CasesView({ userRole }: { userRole?: string }) {
   return (
     <div className="space-y-6">
       {/* Header and Controls */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-900 text-amber-400 font-mono mb-1">
+          <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-900 text-amber-400 font-mono mb-1 shadow-xs">
             <Briefcase className="h-3.5 w-3.5" />
             <span>Control Litigioso & Corporativo</span>
           </span>
@@ -132,7 +132,7 @@ export default function CasesView({ userRole }: { userRole?: string }) {
 
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5 flex-shrink-0"
+          className="apple-interactive px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5 flex-shrink-0"
         >
           <Plus className="h-4 w-4 text-amber-400" />
           <span>Nuevo Expediente</span>
@@ -140,7 +140,7 @@ export default function CasesView({ userRole }: { userRole?: string }) {
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-center">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col sm:flex-row gap-4 justify-between items-center">
         <div className="relative w-full sm:w-96">
           <Search className="h-4 w-4 absolute left-3 top-2.5 text-slate-400" />
           <input
@@ -222,11 +222,11 @@ export default function CasesView({ userRole }: { userRole?: string }) {
                     </td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        c.state === "ACTIVO" 
+                        (c.status || "ACTIVO") === "ACTIVO" 
                           ? "bg-emerald-50 text-emerald-800 border border-emerald-200" 
-                          : "bg-slate-100 text-slate-700"
+                          : "bg-slate-100 text-slate-700 border border-slate-200"
                       }`}>
-                        {c.state}
+                        {c.status || "ACTIVO"}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-slate-500 font-mono">

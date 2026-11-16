@@ -113,7 +113,7 @@ class WorkflowService:
         self._verify_tenant_access(tenant_id, user)
 
         # Regla: Reasignación autorizada (Solo socios o abogados pueden asignar equipos)
-        authorized_roles = ["MANAGING_PARTNER", "SENIOR_LAWYER", "ASSOCIATE_LAWYER"]
+        authorized_roles = ["MANAGING_PARTNER", "ADMIN", "SENIOR_LAWYER", "LAWYER", "ASSOCIATE_LAWYER"]
         if user.role not in authorized_roles:
             raise ForbiddenException("Solo los abogados o socios pueden asignar o modificar equipos de trabajo.")
 
@@ -140,7 +140,7 @@ class WorkflowService:
                 tenant_id=tenant_id,
                 recipient_id=reviewer_id,
                 notification_type=NotificationType.PENDING_REVIEW_ALERT,
-                title="🔍 Designación como Revisor Jurídico",
+                title="Designación como Revisor Jurídico",
                 message=f"Ha sido asignado para revisar el documento.",
                 document_id=wf.document_id
             )
@@ -152,7 +152,7 @@ class WorkflowService:
                 tenant_id=tenant_id,
                 recipient_id=assistant_id,
                 notification_type=NotificationType.NEW_DOCUMENT_RECEIVED,
-                title="📋 Asignación de Soporte Jurídico",
+                title="Asignación de Soporte Jurídico",
                 message=f"Ha sido asignado como asistente para soporte del expediente.",
                 document_id=wf.document_id
             )
@@ -427,11 +427,12 @@ class WorkflowService:
         )
 
         # Notificar a todo el equipo
+        name_display = user.full_name if any(user.full_name.startswith(p) for p in ["Lic.", "Dr.", "Dra.", "Ing."]) else f"Lic. {user.full_name}"
         self.notification_service.notify_team(
             workflow=wf,
             notification_type=NotificationType.APPROVAL_COMPLETED,
-            title="✅ Documento Aprobado Formalmente",
-            message=f"Aprobación otorgada por Lic. {user.full_name} ({scope}).",
+            title="Aprobación Registrada",
+            message=f"Aprobación otorgada por {name_display} ({scope}).",
             payload={"version_number": approval.version_number, "scope": scope}
         )
 

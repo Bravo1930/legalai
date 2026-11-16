@@ -5,7 +5,7 @@ export interface UserProfile {
   tenant_slug: string;
   email: string;
   full_name: string;
-  role: "SUPER_ADMIN" | "MANAGING_PARTNER" | "SENIOR_LAWYER" | "ASSOCIATE_LAWYER" | "PARALEGAL" | "AUDITOR";
+  role: "SUPER_ADMIN" | "MANAGING_PARTNER" | "ADMIN" | "SENIOR_LAWYER" | "ASSOCIATE_LAWYER" | "LAWYER" | "PARALEGAL" | "AUDITOR" | "REVIEWER" | "ASSISTANT" | string;
   professional_license?: string;
   bar_license_number?: string;
   is_active: boolean;

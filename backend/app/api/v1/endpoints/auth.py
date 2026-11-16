@@ -11,7 +11,9 @@ router = APIRouter()
 @router.post("/login", response_model=TokenResponse, summary="Autenticación de usuario y emisión de JWT")
 def login(login_data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Inicia sesión y genera token con claims de despacho y perfil."""
-    client_ip = request.client.host if request.client else None
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    if client_ip in ("testclient", "localhost", None):
+        client_ip = "127.0.0.1"
     return AuthService.authenticate_user(db=db, login_data=login_data, client_ip=client_ip)
 
 

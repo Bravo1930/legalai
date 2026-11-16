@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter
+import socket
 import httpx
 import redis
 from app.core.config import settings
@@ -26,13 +27,19 @@ async def health_check():
     # 2. Diagnóstico de Redis
     redis_health = RedisHealth(status="unhealthy", connected=False)
     try:
+        # Pre-chequeo veloz de socket para evitar bloqueos prolongados en desarrollo
+        redis_host = "127.0.0.1" if settings.REDIS_HOST in ("localhost", "127.0.0.1") else settings.REDIS_HOST
+        with socket.create_connection((redis_host, settings.REDIS_PORT), timeout=0.15):
+            pass
+
         r = redis.Redis(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
             db=settings.REDIS_DB,
             password=settings.REDIS_PASSWORD or None,
             socket_connect_timeout=0.2,
-            socket_timeout=0.2
+            socket_timeout=0.2,
+            retry_on_timeout=False
         )
         if r.ping():
             redis_health.status = "healthy"

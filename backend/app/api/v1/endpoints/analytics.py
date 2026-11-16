@@ -69,14 +69,14 @@ def get_dashboard_analytics(
     rejected_count = wf_by_state.get(WorkflowState.REJECTED, 0)
     in_correction_count = wf_by_state.get(WorkflowState.IN_CORRECTION, 0)
 
-    # 2. Riesgos críticos detectados en documentos del despacho
-    critical_risks_count = db.query(LegalFinding).join(Document, LegalFinding.document_id == Document.id).filter(
-        Document.tenant_id == tenant_id,
+    # 2. Riesgos detectados en documentos del despacho (consistente con matriz de riesgos)
+    critical_risks_count = db.query(LegalFinding).filter(
+        LegalFinding.tenant_id == tenant_id,
         LegalFinding.severity == FindingSeverity.CRITICAL
     ).count()
 
-    high_risks_count = db.query(LegalFinding).join(Document, LegalFinding.document_id == Document.id).filter(
-        Document.tenant_id == tenant_id,
+    high_risks_count = db.query(LegalFinding).filter(
+        LegalFinding.tenant_id == tenant_id,
         LegalFinding.severity == FindingSeverity.HIGH
     ).count()
 

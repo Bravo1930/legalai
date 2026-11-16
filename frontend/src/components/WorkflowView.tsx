@@ -375,7 +375,7 @@ export default function WorkflowView({
             >
               {documents.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.title} ({d.doc_type}) — Versión {d.versions?.length || 1}
+                  {d.title} ({d.doc_type}), Versión {d.versions?.length || 1}
                 </option>
               ))}
             </select>
@@ -590,10 +590,10 @@ export default function WorkflowView({
                                 : "bg-rose-100 text-rose-800 border-rose-300"
                             }`}
                           >
-                            {app.status === "VALID" ? "✓ APROBACIÓN VIGENTE" : "✕ INVALIDADA POR CAMBIO DE CONTENIDO"}
+                            {app.status === "VALID" ? "Aprobación vigente" : "Invalidada por modificación subsecuente"}
                           </span>
                           <span className="text-xs font-bold text-slate-800">
-                            Versión {app.version_number} — {app.scope}
+                            Versión {app.version_number}: {app.scope}
                           </span>
                         </div>
 

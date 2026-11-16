@@ -92,3 +92,59 @@ class TaskService:
         db.commit()
         db.refresh(task)
         return task
+
+    @staticmethod
+    def process_pending_tasks_batch(db: Session, max_tasks: int = 5) -> int:
+        """
+        Procesa tareas pendientes encoladas o reintenta tareas atoradas en PROCESSING.
+        Actualiza el estado a COMPLETED con resultados estructurados, o a FAILED con mensaje de error.
+        """
+        from datetime import timedelta
+        from app.workers.worker import process_task_logic
+
+        now = datetime.now(timezone.utc)
+
+        # 1. Recuperar tareas atoradas en PROCESSING por más de 5 minutos y devolverlas a PENDING
+        stuck_threshold = now - timedelta(minutes=5)
+        stuck_tasks = db.query(Task).filter(
+            Task.status == TaskStatus.PROCESSING,
+            Task.updated_at < stuck_threshold
+        ).all()
+        for st in stuck_tasks:
+            logger.warning(f"Reintentando tarea asíncrona previamente atorada {st.id} ({st.task_type})")
+            st.status = TaskStatus.PENDING
+            st.updated_at = now
+            db.commit()
+
+        # 2. Obtener lote de tareas PENDING
+        pending_tasks = db.query(Task).filter(
+            Task.status == TaskStatus.PENDING
+        ).order_by(Task.created_at.asc()).limit(max_tasks).all()
+
+        processed_count = 0
+        for task in pending_tasks:
+            task.status = TaskStatus.PROCESSING
+            task.updated_at = datetime.now(timezone.utc)
+            db.commit()
+
+            try:
+                logger.info(f"Worker procesando tarea {task.id} [{task.task_type}]...")
+                result = process_task_logic(task.task_type, task.payload or {})
+                task.status = TaskStatus.COMPLETED
+                task.result = result
+                task.error_message = None
+                task.completed_at = datetime.now(timezone.utc)
+                task.updated_at = datetime.now(timezone.utc)
+                db.commit()
+                processed_count += 1
+                logger.info(f"Tarea {task.id} completada exitosamente.")
+            except Exception as ex:
+                logger.error(f"Error al ejecutar tarea asíncrona {task.id}: {ex}")
+                task.status = TaskStatus.FAILED
+                task.error_message = f"Error de procesamiento: {str(ex)}"
+                task.completed_at = datetime.now(timezone.utc)
+                task.updated_at = datetime.now(timezone.utc)
+                db.commit()
+                processed_count += 1
+
+        return processed_count

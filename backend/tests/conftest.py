@@ -75,30 +75,34 @@ def lawyer_headers(db_session):
 
 @pytest.fixture(scope="session")
 def setup_second_tenant(db_session):
-    """Crea un segundo despacho y un abogado para probar aislamiento horizontal."""
-    import uuid
-    slug_b = f"despacho-b-{uuid.uuid4().hex[:6]}"
-    tenant_b = Tenant(
-        name="Corporativo Jurídico del Norte S.C.",
-        slug=slug_b,
-        rfc="CJN220303XY9",
-        contact_email=f"contacto@{slug_b}.com"
-    )
-    db_session.add(tenant_b)
-    db_session.commit()
-    db_session.refresh(tenant_b)
+    """Crea o reutiliza un segundo despacho y abogado para probar aislamiento horizontal sin duplicados."""
+    slug_b = "despacho-b-test"
+    tenant_b = db_session.query(Tenant).filter(Tenant.slug == slug_b).first()
+    if not tenant_b:
+        tenant_b = Tenant(
+            name="Corporativo Jurídico del Norte S.C.",
+            slug=slug_b,
+            rfc="CJN220303XY9",
+            contact_email="contacto@despacho-b-test.com"
+        )
+        db_session.add(tenant_b)
+        db_session.commit()
+        db_session.refresh(tenant_b)
 
-    user_b = User(
-        tenant_id=tenant_b.id,
-        email=f"abogado@{slug_b}.com",
-        hashed_password=get_password_hash("Password1234!"),
-        full_name="Lic. Roberto Garza Treviño",
-        role=LegalRoles.SENIOR_LAWYER,
-        professional_license="87654321"
-    )
-    db_session.add(user_b)
-    db_session.commit()
-    db_session.refresh(user_b)
+    email_b = "abogado@despacho-b-test.com"
+    user_b = db_session.query(User).filter(User.email == email_b).first()
+    if not user_b:
+        user_b = User(
+            tenant_id=tenant_b.id,
+            email=email_b,
+            hashed_password=get_password_hash("Password1234!"),
+            full_name="Lic. Roberto Garza Treviño",
+            role=LegalRoles.SENIOR_LAWYER,
+            professional_license="87654321"
+        )
+        db_session.add(user_b)
+        db_session.commit()
+        db_session.refresh(user_b)
 
     token_b = create_access_token({
         "sub": str(user_b.id),

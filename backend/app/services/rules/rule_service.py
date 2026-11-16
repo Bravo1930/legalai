@@ -352,7 +352,7 @@ class RuleService:
         verification: RuleVerificationRequest
     ) -> RuleEvaluationDetail:
         """Permite que un abogado humano resuelva un dictamen en PENDING_HUMAN_REVIEW (HITL)."""
-        if lawyer_user.role not in [LegalRoles.SENIOR_LAWYER, LegalRoles.MANAGING_PARTNER, LegalRoles.ASSOCIATE_LAWYER]:
+        if lawyer_user.role not in [LegalRoles.SENIOR_LAWYER, LegalRoles.LAWYER, LegalRoles.MANAGING_PARTNER, LegalRoles.ADMIN, LegalRoles.ASSOCIATE_LAWYER]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Solo un abogado o socio autorizado puede validar observaciones jurídicas."

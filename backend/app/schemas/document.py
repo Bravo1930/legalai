@@ -7,13 +7,13 @@ from pydantic import BaseModel, ConfigDict
 class DocumentMetadataResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    parties: Optional[List[Dict[str, Any]]] = None
+    parties: Optional[List[Any]] = None
     doc_date: Optional[str] = None
     subject_matter: Optional[str] = None
     obligations: Optional[List[Any]] = None
-    amounts: Optional[List[str]] = None
-    terms_deadlines: Optional[List[str]] = None
-    signers: Optional[List[Dict[str, Any]]] = None
+    amounts: Optional[List[Any]] = None
+    terms_deadlines: Optional[List[Any]] = None
+    signers: Optional[List[Any]] = None
     jurisdiction: Optional[str] = None
     court_authority: Optional[str] = None
     procedure_type: Optional[str] = None

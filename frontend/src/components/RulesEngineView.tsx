@@ -17,7 +17,8 @@ import {
   FileText,
   UserCheck,
   ChevronRight,
-  BookOpen
+  BookOpen,
+  X
 } from "lucide-react";
 
 interface RulesEngineViewProps {
@@ -307,7 +308,7 @@ export default function RulesEngineView({ documents, initialSelectedDocId, userR
               className="w-full py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center space-x-2 transition-all disabled:opacity-50 shadow"
             >
               <RefreshCw className={`h-4 w-4 ${evaluating ? "animate-spin text-amber-400" : ""}`} />
-              <span>{evaluating ? "Evaluando Reglas..." : "⚡ Ejecutar Auditoría Determinista"}</span>
+              <span>{evaluating ? "Evaluando reglas..." : "Ejecutar auditoría determinista"}</span>
             </button>
 
             {evalError && (
@@ -342,19 +343,19 @@ export default function RulesEngineView({ documents, initialSelectedDocId, userR
                 <div className="grid grid-cols-2 gap-2 pt-2 text-[11px]">
                   <div className="p-2 rounded bg-emerald-50 border border-emerald-100 text-emerald-800">
                     <span className="font-bold block text-sm">{evaluation.passed_count}</span>
-                    <span>Cumplen ✓</span>
+                    <span>Reglas conformes</span>
                   </div>
                   <div className="p-2 rounded bg-rose-50 border border-rose-100 text-rose-800">
                     <span className="font-bold block text-sm">{evaluation.failed_count}</span>
-                    <span>Violaciones ✗</span>
+                    <span>Incumplimientos</span>
                   </div>
                   <div className="p-2 rounded bg-amber-50 border border-amber-100 text-amber-800">
                     <span className="font-bold block text-sm">{evaluation.pending_count}</span>
-                    <span>Pendientes (HITL) ⚠️</span>
+                    <span>Revisión letrada requerida</span>
                   </div>
                   <div className="p-2 rounded bg-slate-50 border border-slate-200 text-slate-700">
                     <span className="font-bold block text-sm">{evaluation.not_applicable_count}</span>
-                    <span>No Aplican -</span>
+                    <span>No aplicables</span>
                   </div>
                 </div>
               </div>
@@ -410,8 +411,9 @@ export default function RulesEngineView({ documents, initialSelectedDocId, userR
                         )}
 
                         {detail.failure_reason && (
-                          <p className="text-[11px] text-rose-700 mt-1 font-semibold">
-                            ⚠️ {detail.failure_reason}
+                          <p className="text-[11px] text-rose-700 mt-1 font-semibold flex items-center space-x-1">
+                            <AlertTriangle className="h-3 w-3 text-rose-600 flex-shrink-0" />
+                            <span>{detail.failure_reason}</span>
                           </p>
                         )}
 
@@ -558,7 +560,7 @@ export default function RulesEngineView({ documents, initialSelectedDocId, userR
                           rule.is_active ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : "bg-slate-200 text-slate-600 hover:bg-slate-300"
                         }`}
                       >
-                        {rule.is_active ? "Activa ✓" : "Inactiva"}
+                        {rule.is_active ? "Activa" : "Inactiva"}
                       </button>
                     </td>
                   </tr>
@@ -580,9 +582,9 @@ export default function RulesEngineView({ documents, initialSelectedDocId, userR
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 transition-colors"
               >
-                ✕
+                <X className="h-5 w-5" />
               </button>
             </div>
 

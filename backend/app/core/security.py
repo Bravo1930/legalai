@@ -9,25 +9,51 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class LegalRoles:
-    SUPER_ADMIN = "SUPER_ADMIN"
-    MANAGING_PARTNER = "MANAGING_PARTNER"  # Socio Director del Despacho
-    SENIOR_LAWYER = "SENIOR_LAWYER"        # Abogado Senior (Facultad de Aprobación HITL)
-    ASSOCIATE_LAWYER = "ASSOCIATE_LAWYER"  # Abogado Asociado
-    PARALEGAL = "PARALEGAL"                # Pasante / Asistente Jurídico
-    AUDITOR = "AUDITOR"                    # Auditor de Cumplimiento (Solo Lectura)
+    SUPER_ADMIN = "SUPER_ADMIN"            # Administrador Global de la Plataforma (Control Plane)
+    
+    # Roles del Despacho (Tenant)
+    ADMIN = "ADMIN"                         # Administrador del Despacho
+    MANAGING_PARTNER = "MANAGING_PARTNER"   # Socio Director del Despacho (Alias de ADMIN)
+    LAWYER = "LAWYER"                       # Abogado Titular / Responsable
+    SENIOR_LAWYER = "SENIOR_LAWYER"         # Abogado Senior (Facultad de Aprobación HITL)
+    ASSOCIATE_LAWYER = "ASSOCIATE_LAWYER"   # Abogado Asociado
+    REVIEWER = "REVIEWER"                   # Revisor Jurídico / Auditor
+    AUDITOR = "AUDITOR"                     # Auditor de Cumplimiento (Solo Lectura)
+    ASSISTANT = "ASSISTANT"                 # Asistente Legal / Pasante
+    PARALEGAL = "PARALEGAL"                 # Pasante / Asistente Jurídico
+    LEGAL_ASSISTANT = "LEGAL_ASSISTANT"     # Asistente Jurídico
 
     ALL_ROLES = [
         SUPER_ADMIN,
+        ADMIN,
         MANAGING_PARTNER,
+        LAWYER,
         SENIOR_LAWYER,
         ASSOCIATE_LAWYER,
-        PARALEGAL,
+        REVIEWER,
         AUDITOR,
+        ASSISTANT,
+        PARALEGAL,
+        LEGAL_ASSISTANT,
+    ]
+
+    TENANT_ROLES = [
+        ADMIN,
+        MANAGING_PARTNER,
+        LAWYER,
+        SENIOR_LAWYER,
+        ASSOCIATE_LAWYER,
+        REVIEWER,
+        AUDITOR,
+        ASSISTANT,
+        PARALEGAL,
+        LEGAL_ASSISTANT,
     ]
 
     HITL_APPROVER_ROLES = [
-        SUPER_ADMIN,
+        ADMIN,
         MANAGING_PARTNER,
+        LAWYER,
         SENIOR_LAWYER,
     ]
 

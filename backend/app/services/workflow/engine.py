@@ -124,13 +124,13 @@ class WorkflowEngine:
                     return False, "Los asistentes jurídicos no pueden aprobar documentos definitivos sin política expresa."
             
             # Debe existir al menos un abogado responsable o el usuario debe ser abogado facultado
-            lawyer_roles = ["MANAGING_PARTNER", "SENIOR_LAWYER", "ASSOCIATE_LAWYER"]
+            lawyer_roles = ["MANAGING_PARTNER", "ADMIN", "SENIOR_LAWYER", "LAWYER", "ASSOCIATE_LAWYER"]
             if user.role not in lawyer_roles and not workflow.allow_assistant_approval:
                 return False, "La aprobación definitiva requiere un abogado facultado con cédula profesional."
 
         # 4. Transición a PENDIENTE DE APROBACIÓN
         if to_state == WorkflowState.PENDING_APPROVAL:
-            if not workflow.assigned_lawyer_id and user.role not in ["MANAGING_PARTNER", "SENIOR_LAWYER"]:
+            if not workflow.assigned_lawyer_id and user.role not in ["MANAGING_PARTNER", "ADMIN", "SENIOR_LAWYER", "LAWYER"]:
                 return False, "Debe asignarse un abogado titular responsable antes de enviar a aprobación."
 
         return True, None

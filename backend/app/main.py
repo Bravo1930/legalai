@@ -1,5 +1,6 @@
 import time
 import uuid
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,6 +53,32 @@ def init_database_and_seed():
             db.add(admin_user)
             db.commit()
             logger.info("Usuario maestro creado exitosamente con rol SUPER_ADMIN.")
+
+        # Seed inicial: Usuarios con los 4 roles del despacho demo
+        demo_roles_users = [
+            ("admin@bufetemexico.demo", "Lic. Roberto González Garza", LegalRoles.ADMIN, "11223344"),
+            ("abogado@bufetemexico.demo", "Lic. Sofía Valenzuela Márquez", LegalRoles.SENIOR_LAWYER, "98765432"),
+            ("revisor@bufetemexico.demo", "Lic. Carlos Mendoza Silva", LegalRoles.REVIEWER, "77889900"),
+            ("asistente@bufetemexico.demo", "Pasante Mariana Estrada Ríos", LegalRoles.ASSISTANT, None),
+        ]
+        for demo_email, demo_name, demo_role, demo_cedula in demo_roles_users:
+            existing_user = db.query(User).filter(User.email == demo_email).first()
+            if not existing_user:
+                db_user = User(
+                    tenant_id=demo_tenant.id,
+                    email=demo_email,
+                    hashed_password=get_password_hash("Password1234!"),
+                    full_name=demo_name,
+                    role=demo_role,
+                    professional_license=demo_cedula
+                )
+                db.add(db_user)
+                logger.info(f"Usuario del despacho creado: {demo_email} con rol {demo_role}")
+            else:
+                # Asegurar contraseña consistente para el entorno de desarrollo
+                existing_user.hashed_password = get_password_hash("Password1234!")
+                existing_user.role = demo_role
+        db.commit()
 
         # Seed inicial: Reglas Deterministas Estándar de la Legislación Mexicana
         existing_rules_count = db.query(LegalRule).filter(LegalRule.tenant_id == demo_tenant.id).count()
@@ -138,6 +165,10 @@ def init_database_and_seed():
             db.add_all(initial_rules)
             db.commit()
             logger.info(f"{len(initial_rules)} reglas iniciales sembradas exitosamente.")
+
+        # Seed de demostración jurídica condicional (controlado por settings.SEED_DEMO)
+        from app.db.seed_demo import seed_demo_legal_data
+        seed_demo_legal_data(db, demo_tenant.id)
     except Exception as e:
         logger.error(f"Error durante el seed inicial: {e}")
         db.rollback()
@@ -145,14 +176,46 @@ def init_database_and_seed():
         db.close()
 
 
+async def background_queue_worker():
+    """Worker asíncrono en segundo plano que procesa tareas encoladas en PostgreSQL/Redis."""
+    from app.services.task_service import TaskService
+    logger.info("Iniciando LegalAI Async Task Queue Worker en FastAPI...")
+    while True:
+        try:
+            def _run_batch():
+                db = SessionLocal()
+                try:
+                    return TaskService.process_pending_tasks_batch(db, max_tasks=5)
+                finally:
+                    db.close()
+
+            processed = await asyncio.to_thread(_run_batch)
+            if processed > 0:
+                await asyncio.sleep(1)
+            else:
+                await asyncio.sleep(4)
+        except asyncio.CancelledError:
+            logger.info("Deteniendo LegalAI Async Task Queue Worker...")
+            break
+        except Exception as e:
+            logger.error(f"Error en worker asíncrono en segundo plano: {e}")
+            await asyncio.sleep(5)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Inicio: inicialización de BD y recursos
     logger.info(f"Iniciando {settings.PROJECT_NAME} v{settings.VERSION} [{settings.ENVIRONMENT}]")
     init_database_and_seed()
+    worker_task = asyncio.create_task(background_queue_worker())
     yield
     # Cierre: limpieza
     logger.info(f"Deteniendo {settings.PROJECT_NAME}...")
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
 
 
 app = FastAPI(
@@ -167,16 +230,6 @@ app = FastAPI(
 
 # Configuración de Errores Centralizados
 setup_exception_handlers(app)
-
-# Configuración de CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 # Middleware de Trazabilidad, Request-ID y Logging
 @app.middleware("http")
@@ -196,6 +249,18 @@ async def request_context_middleware(request: Request, call_next):
         extra={"request_id": request_id}
     )
     return response
+
+
+# Configuración de CORS (Outermost Middleware en FastAPI/Starlette)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=["*"],
+    expose_headers=["X-Request-ID", "X-Process-Time", "Content-Disposition"],
+    max_age=600,
+)
 
 
 # Montar Enrutadores v1

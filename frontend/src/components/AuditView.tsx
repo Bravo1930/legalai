@@ -36,6 +36,8 @@ export default function AuditView({ userRole }: { userRole?: string }) {
   const [selectedAction, setSelectedAction] = useState("");
   const [selectedResource, setSelectedResource] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   // Modal Inspección JSON
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
@@ -43,6 +45,10 @@ export default function AuditView({ userRole }: { userRole?: string }) {
   useEffect(() => {
     loadLogs();
   }, [selectedAction, selectedResource]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedAction, selectedResource]);
 
   const loadLogs = async () => {
     setLoading(true);
@@ -68,6 +74,9 @@ export default function AuditView({ userRole }: { userRole?: string }) {
       (l.resource_id && l.resource_id.toLowerCase().includes(q))
     );
   });
+
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage) || 1;
+  const paginatedLogs = filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -156,7 +165,7 @@ export default function AuditView({ userRole }: { userRole?: string }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredLogs.map((log) => (
+                {paginatedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                     <td className="py-3 px-4">
                       <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-[11px]">
@@ -185,7 +194,7 @@ export default function AuditView({ userRole }: { userRole?: string }) {
                     </td>
 
                     <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
-                      {log.ip_address || "127.0.0.1"}
+                      {!log.ip_address || log.ip_address === "testclient" || log.ip_address === "localhost" ? "127.0.0.1" : log.ip_address}
                     </td>
 
                     <td className="py-3 px-4 text-slate-500 font-mono">
@@ -208,6 +217,33 @@ export default function AuditView({ userRole }: { userRole?: string }) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {filteredLogs.length > 0 && (
+          <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+            <div>
+              Mostrando <span className="font-semibold font-mono text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> a <span className="font-semibold font-mono text-slate-900">{Math.min(currentPage * itemsPerPage, filteredLogs.length)}</span> de <span className="font-semibold font-mono text-slate-900">{filteredLogs.length}</span> registros
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs"
+              >
+                Anterior
+              </button>
+              <span className="font-mono px-2 font-semibold text-slate-900">
+                Página {currentPage} de {Math.ceil(filteredLogs.length / itemsPerPage) || 1}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(Math.ceil(filteredLogs.length / itemsPerPage) || 1, p + 1))}
+                disabled={currentPage === (Math.ceil(filteredLogs.length / itemsPerPage) || 1)}
+                className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs"
+              >
+                Siguiente
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -196,7 +196,7 @@ def test_rule_engine_scope_filtering():
 # 2. PRUEBAS DE INTEGRACIÓN API (ENDPOINT CRUD, VERSIONADO Y HITL)
 # =====================================================================
 
-def test_api_create_and_version_rule(client, lawyer_headers):
+def test_api_create_and_version_rule(client, lawyer_headers, db_session):
     """Crea una regla determinista y comprueba que se inicialice en versión 1."""
     rule_code = f"REG-TEST-{uuid.uuid4().hex[:6].upper()}"
     payload = {
@@ -228,27 +228,33 @@ def test_api_create_and_version_rule(client, lawyer_headers):
     assert rule_data["is_active"] is True
     rule_id = rule_data["id"]
 
-    # Modificar regla -> Debe incrementar automáticamente a versión 2 y registrar motivo
-    update_res = client.put(
-        f"{settings.API_V1_PREFIX}/rules/{rule_id}",
-        json={
-            "name": "Cláusula de Confidencialidad y Secreto Industrial Reforzada",
-            "change_reason": "Actualización por reforma legal a la LFPPI"
-        },
-        headers=lawyer_headers
-    )
-    assert update_res.status_code == 200
-    updated_data = update_res.json()
-    assert updated_data["version"] == 2
-    assert "Reforzada" in updated_data["name"]
+    try:
+        # Modificar regla -> Debe incrementar automáticamente a versión 2 y registrar motivo
+        update_res = client.put(
+            f"{settings.API_V1_PREFIX}/rules/{rule_id}",
+            json={
+                "name": "Cláusula de Confidencialidad y Secreto Industrial Reforzada",
+                "change_reason": "Actualización por reforma legal a la LFPPI"
+            },
+            headers=lawyer_headers
+        )
+        assert update_res.status_code == 200
+        updated_data = update_res.json()
+        assert updated_data["version"] == 2
+        assert "Reforzada" in updated_data["name"]
 
-    # Consultar detalle y verificar versiones inmutables
-    get_res = client.get(f"{settings.API_V1_PREFIX}/rules/{rule_id}", headers=lawyer_headers)
-    assert get_res.status_code == 200
-    detail = get_res.json()
-    assert len(detail["versions"]) >= 2
-    assert detail["versions"][0]["version_number"] == 2
-    assert detail["versions"][1]["version_number"] == 1
+        # Consultar detalle y verificar versiones inmutables
+        get_res = client.get(f"{settings.API_V1_PREFIX}/rules/{rule_id}", headers=lawyer_headers)
+        assert get_res.status_code == 200
+        detail = get_res.json()
+        assert len(detail["versions"]) >= 2
+        assert detail["versions"][0]["version_number"] == 2
+        assert detail["versions"][1]["version_number"] == 1
+    finally:
+        from app.models.rule import LegalRule, RuleVersion
+        db_session.query(RuleVersion).filter(RuleVersion.rule_id == rule_id).delete()
+        db_session.query(LegalRule).filter(LegalRule.id == rule_id).delete()
+        db_session.commit()
 
 
 def test_api_evaluate_document_with_rules_and_hitl(client, lawyer_headers):
@@ -306,7 +312,7 @@ def test_api_evaluate_document_with_rules_and_hitl(client, lawyer_headers):
     assert verified_data["verified_at"] is not None
 
 
-def test_api_multi_tenant_rule_isolation(client, lawyer_headers, setup_second_tenant):
+def test_api_multi_tenant_rule_isolation(client, lawyer_headers, setup_second_tenant, db_session):
     """Comprueba que el Despacho B no pueda ver ni acceder a las reglas del Despacho A."""
     # Despacho A crea una regla confidencial
     rule_code_a = f"REG-CONF-A-{uuid.uuid4().hex[:6].upper()}"
@@ -330,13 +336,19 @@ def test_api_multi_tenant_rule_isolation(client, lawyer_headers, setup_second_te
     assert res_a.status_code == 201
     rule_id_a = res_a.json()["id"]
 
-    # Despacho B intenta consultar la regla del Despacho A -> Debe ser 404 No Encontrada
-    headers_b = setup_second_tenant["headers"]
-    res_b = client.get(
-        f"{settings.API_V1_PREFIX}/rules/{rule_id_a}",
-        headers=headers_b
-    )
-    assert res_b.status_code == 404
+    try:
+        # Despacho B intenta consultar la regla del Despacho A -> Debe ser 404 No Encontrada
+        headers_b = setup_second_tenant["headers"]
+        res_b = client.get(
+            f"{settings.API_V1_PREFIX}/rules/{rule_id_a}",
+            headers=headers_b
+        )
+        assert res_b.status_code == 404
+    finally:
+        from app.models.rule import LegalRule, RuleVersion
+        db_session.query(RuleVersion).filter(RuleVersion.rule_id == rule_id_a).delete()
+        db_session.query(LegalRule).filter(LegalRule.id == rule_id_a).delete()
+        db_session.commit()
 
 
 def test_api_superadmin_blocked_from_evaluating_private_doc(client, auth_headers):

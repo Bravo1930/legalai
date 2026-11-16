@@ -41,7 +41,7 @@ class VersionCompiler:
         reviewer_license: str
     ) -> Tuple[DocumentVersion, str]:
         # 1. Validar facultades del abogado (HITL)
-        if lawyer_user.role not in [LegalRoles.SENIOR_LAWYER, LegalRoles.MANAGING_PARTNER, LegalRoles.ASSOCIATE_LAWYER]:
+        if lawyer_user.role not in [LegalRoles.SENIOR_LAWYER, LegalRoles.LAWYER, LegalRoles.MANAGING_PARTNER, LegalRoles.ADMIN, LegalRoles.ASSOCIATE_LAWYER]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Solo un abogado autorizado con cédula profesional puede aprobar y compilar nuevas versiones vinculantes."

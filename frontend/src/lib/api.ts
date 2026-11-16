@@ -100,8 +100,22 @@ class ApiClient {
     return res.json();
   }
 
+  async retryTask(taskId: string): Promise<AsyncTask> {
+    const res = await fetch(`${API_BASE_URL}/tasks/${taskId}/retry`, {
+      method: "POST",
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al reintentar tarea");
+    return res.json();
+  }
+
   // Gestión Documental
   async searchDocuments(query?: string, docType?: string, caseId?: string): Promise<{ items: LegalDocument[]; total: number }> {
+    const curUser = this.getCurrentUser();
+    if (curUser?.role?.toUpperCase() === "SUPER_ADMIN") {
+      return { items: [], total: 0 };
+    }
+
     const params = new URLSearchParams();
     if (query) params.append("query", query);
     if (docType) params.append("doc_type", docType);
@@ -110,7 +124,25 @@ class ApiClient {
     const res = await fetch(`${API_BASE_URL}/documents?${params.toString()}`, {
       headers: { ...this.getAuthHeader() },
     });
-    if (!res.ok) throw new Error("Error al consultar documentos");
+    if (!res.ok) {
+      if (res.status === 401) {
+        this.logout();
+        const err: any = new Error("401: Sesión expirada o no autenticado");
+        err.status = 401;
+        throw err;
+      }
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        const msg = data?.error?.message || "403: No cuenta con permisos para consultar documentos";
+        const err: any = new Error(msg);
+        err.status = 403;
+        throw err;
+      }
+      const data = await res.json().catch(() => ({}));
+      const err: any = new Error(data?.error?.message || "Error al consultar documentos");
+      err.status = res.status;
+      throw err;
+    }
     return res.json();
   }
 
@@ -224,6 +256,24 @@ class ApiClient {
     return res.json();
   }
 
+  async askLegalAssistant(message: string, documentId?: string, model?: string): Promise<{ reply: string; model: string; execution_time_ms: number }> {
+    const res = await fetch(`${API_BASE_URL}/ai/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify({
+        message,
+        document_id: documentId || undefined,
+        model: model || undefined,
+      }),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.error?.message || resData?.detail || "Error en asistente de IA");
+    return resData;
+  }
+
   // Motor de Reglas Deterministas
   async listRules(category?: string, severity?: string, isActive?: boolean): Promise<LegalRule[]> {
     const params = new URLSearchParams();
@@ -335,6 +385,14 @@ class ApiClient {
       headers: { ...this.getAuthHeader() },
     });
     if (!res.ok) throw new Error("Error al consultar sesión de análisis");
+    return res.json();
+  }
+
+  async listAnalysisSessions(): Promise<AdvancedAnalysisSession[]> {
+    const res = await fetch(`${API_BASE_URL}/advanced-analysis/sessions`, {
+      headers: { ...this.getAuthHeader() },
+    });
+    if (!res.ok) throw new Error("Error al consultar lista de sesiones de auditoría");
     return res.json();
   }
 

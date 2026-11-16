@@ -10,6 +10,7 @@ from app.models.case import Case
 from app.models.client import Client
 from app.models.user import User
 from app.models.audit_log import AuditLog
+from app.models.workflow import DocumentWorkflow
 from app.services.storage_service import StorageService
 from app.services.extraction_service import ExtractionService
 
@@ -120,12 +121,26 @@ class DocumentService:
     def get_document(
         db: Session,
         document_id: UUID,
-        tenant_id: UUID,
-        user_role: str
+        tenant_id: Optional[UUID],
+        user_role: str,
+        user_id: Optional[UUID] = None
     ) -> Document:
-        """Obtiene un documento validando que pertenezca al despacho del solicitante."""
-        if user_role == "SUPER_ADMIN":
+        """Obtiene un documento validando que pertenezca al despacho del solicitante y permisos RBAC."""
+        norm_role = (user_role or "").upper()
+        if norm_role == "SUPER_ADMIN":
             raise ForbiddenException("Aislamiento de Confidencialidad: El administrador global no tiene acceso a los documentos confidenciales del despacho.")
+
+        if not tenant_id:
+            raise ForbiddenException("El usuario no tiene un despacho asignado.")
+
+        allowed_roles = [
+            "ADMIN", "MANAGING_PARTNER",
+            "LAWYER", "SENIOR_LAWYER", "ASSOCIATE_LAWYER",
+            "REVIEWER", "AUDITOR",
+            "ASSISTANT", "PARALEGAL", "LEGAL_ASSISTANT"
+        ]
+        if norm_role not in allowed_roles:
+            raise ForbiddenException(f"El rol '{user_role}' no tiene autorización para acceder a documentos.")
 
         doc = db.query(Document).filter(
             Document.id == document_id,
@@ -140,8 +155,9 @@ class DocumentService:
     @staticmethod
     def search_documents(
         db: Session,
-        tenant_id: UUID,
+        tenant_id: Optional[UUID],
         user_role: str,
+        user_id: Optional[UUID] = None,
         query: Optional[str] = None,
         case_id: Optional[UUID] = None,
         client_id: Optional[UUID] = None,
@@ -149,16 +165,59 @@ class DocumentService:
         skip: int = 0,
         limit: int = 50
     ) -> Tuple[List[Document], int]:
-        """Búsqueda avanzada por texto, clasificación, cliente o expediente."""
-        if user_role == "SUPER_ADMIN":
+        """Búsqueda avanzada con aislamiento multi-tenant y verificación de permisos RBAC."""
+        norm_role = (user_role or "").upper()
+        if norm_role == "SUPER_ADMIN":
             raise ForbiddenException("El administrador global de la plataforma no puede consultar documentos de despachos.")
+
+        if not tenant_id:
+            raise ForbiddenException("El usuario no tiene un despacho asignado para consultar documentos.")
+
+        allowed_roles = [
+            "ADMIN", "MANAGING_PARTNER",
+            "LAWYER", "SENIOR_LAWYER", "ASSOCIATE_LAWYER",
+            "REVIEWER", "AUDITOR",
+            "ASSISTANT", "PARALEGAL", "LEGAL_ASSISTANT"
+        ]
+        if norm_role not in allowed_roles:
+            raise ForbiddenException(f"El rol '{user_role}' no tiene autorización para consultar documentos.")
 
         q = db.query(Document).filter(Document.tenant_id == tenant_id)
 
+        # Validación estricta por expediente (Case-Level Access Control)
         if case_id:
+            case = db.query(Case).filter(Case.id == case_id).first()
+            if not case or case.tenant_id != tenant_id:
+                raise NotFoundException("Expediente no encontrado o no pertenece a este despacho")
+
+            # Si el usuario no es Admin / Managing Partner, verificar asignación en el expediente
+            if norm_role not in ["ADMIN", "MANAGING_PARTNER"]:
+                has_permission = False
+                if case.lead_lawyer_id is None or case.lead_lawyer_id == user_id:
+                    has_permission = True
+                else:
+                    # Verificar si el usuario está asignado al flujo de algún documento del caso
+                    assignment = db.query(DocumentWorkflow).join(Document).filter(
+                        Document.case_id == case_id,
+                        Document.tenant_id == tenant_id,
+                        or_(
+                            DocumentWorkflow.assigned_lawyer_id == user_id,
+                            DocumentWorkflow.reviewer_id == user_id,
+                            DocumentWorkflow.assistant_id == user_id
+                        )
+                    ).first()
+                    if assignment:
+                        has_permission = True
+
+                if not has_permission:
+                    raise ForbiddenException("No cuenta con permisos asignados para consultar documentos de este expediente.")
+
             q = q.filter(Document.case_id == case_id)
 
         if client_id:
+            client = db.query(Client).filter(Client.id == client_id, Client.tenant_id == tenant_id).first()
+            if not client:
+                raise NotFoundException("Cliente no encontrado o no pertenece a este despacho")
             q = q.filter(Document.client_id == client_id)
 
         if doc_type:
