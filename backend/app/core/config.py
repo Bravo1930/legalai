@@ -1,5 +1,6 @@
+import urllib.parse
 from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+from pydantic import AnyHttpUrl, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -93,6 +94,31 @@ class Settings(BaseSettings):
             "http://localhost:8000",
             "http://127.0.0.1:8000"
         ]
+
+    @model_validator(mode="after")
+    def apply_redis_url(self):
+        """Si REDIS_URL apunta a un Redis real (no localhost), sus valores mandan.
+
+        El cliente de Redis y el health check usan REDIS_HOST/PORT/DB/PASSWORD,
+        por lo que una REDIS_URL de Railway (redis://default:***@redis.railway.internal:6379)
+        quedaba ignorada y la app siempre intentaba localhost. Al parsearla aquí,
+        ambos caminos quedan consistentes sin tocar ningún otro archivo.
+        """
+        url = (self.REDIS_URL or "").strip()
+        if url and "localhost" not in url and "127.0.0.1" not in url:
+            parsed = urllib.parse.urlparse(url)
+            if parsed.hostname:
+                self.REDIS_HOST = parsed.hostname
+            if parsed.port:
+                self.REDIS_PORT = parsed.port
+            if parsed.password:
+                self.REDIS_PASSWORD = urllib.parse.unquote(parsed.password)
+            if parsed.path and len(parsed.path) > 1:
+                try:
+                    self.REDIS_DB = int(parsed.path.lstrip("/"))
+                except ValueError:
+                    pass
+        return self
 
     # Datos de Demostración
     SEED_DEMO: bool = True

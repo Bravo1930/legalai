@@ -207,7 +207,7 @@ def list_tenant_approvals(
         db.query(WorkflowApprovalRecord)
         .join(DocumentWorkflow, DocumentWorkflow.id == WorkflowApprovalRecord.workflow_id)
         .filter(DocumentWorkflow.tenant_id == current_user.tenant_id)
-        .order_by(WorkflowApprovalRecord.created_at.desc())
+        .order_by(WorkflowApprovalRecord.approved_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
